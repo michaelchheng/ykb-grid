@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { Resend } from 'resend';
 import { adminAuth } from '@/lib/firebase-admin';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
-const FROM   = process.env.NOTIFY_FROM_EMAIL || 'YKB <noreply@youknoball.com>';
+const FROM   = process.env.NOTIFY_FROM_EMAIL || 'YKB <noreply@youknowball.us>';
 
 const TIER_COLOR: Record<string, string> = {
   easy: '#34d399', medium: '#38bdf8', hard: '#c084fc', unhinged: '#facc15',
@@ -43,6 +41,11 @@ export async function POST(req: NextRequest) {
     midnight.setHours(24, 0, 0, 0);
     const hrsLeft  = Math.ceil((midnight.getTime() - now.getTime()) / 3_600_000);
 
+    if (!process.env.RESEND_API_KEY) {
+      return NextResponse.json({ ok: true, skipped: 'no resend key' });
+    }
+    const { Resend } = await import('resend');
+    const resend = new Resend(process.env.RESEND_API_KEY);
     const { error } = await resend.emails.send({
       from:    FROM,
       to:      email,
