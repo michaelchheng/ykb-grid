@@ -1,0 +1,662 @@
+[
+  {
+    "username": "HoopHead99",
+    "score": 8750,
+    "correct": 9,
+    "total": 10,
+    "bestStreak": 7,
+    "avgSpeedMs": 4200,
+    "date": "2026-05-08",
+    "submittedAt": 1778218170278
+  },
+  {
+    "username": "StatNerd",
+    "score": 7200,
+    "correct": 8,
+    "total": 10,
+    "bestStreak": 5,
+    "avgSpeedMs": 3800,
+    "date": "2026-05-08",
+    "submittedAt": 1778219491695
+  },
+  {
+    "username": "CourtVision",
+    "score": 6500,
+    "correct": 8,
+    "total": 10,
+    "bestStreak": 4,
+    "avgSpeedMs": 6100,
+    "date": "2026-05-08",
+    "submittedAt": 1778219186287
+  },
+  {
+    "username": "BrickLayer",
+    "score": 5800,
+    "correct": 7,
+    "total": 10,
+    "bestStreak": 4,
+    "avgSpeedMs": 5500,
+    "date": "2026-05-08",
+    "submittedAt": 1778218574963
+  },
+  {
+    "username": "WojBomber",
+    "score": 4900,
+    "correct": 7,
+    "total": 10,
+    "bestStreak": 3,
+    "avgSpeedMs": 7200,
+    "date": "2026-05-08",
+    "submittedAt": 1778217191201
+  },
+  {
+    "username": "ClutchGene",
+    "score": 4200,
+    "correct": 6,
+    "total": 10,
+    "bestStreak": 3,
+    "avgSpeedMs": 8900,
+    "date": "2026-05-08",
+    "submittedAt": 1778220260619
+  },
+  {
+    "username": "PickAndRoll",
+    "score": 3600,
+    "correct": 6,
+    "total": 10,
+    "bestStreak": 2,
+    "avgSpeedMs": 9400,
+    "date": "2026-05-08",
+    "submittedAt": 1778217257834
+  },
+  {
+    "username": "IsoKing",
+    "score": 2800,
+    "correct": 5,
+    "total": 10,
+    "bestStreak": 2,
+    "avgSpeedMs": 11000,
+    "date": "2026-05-08",
+    "submittedAt": 1778217434196
+  },
+  {
+    "username": "MidRangeRay",
+    "score": 2100,
+    "correct": 5,
+    "total": 10,
+    "bestStreak": 1,
+    "avgSpeedMs": 13000,
+    "date": "2026-05-08",
+    "submittedAt": 1778216897451
+  },
+  {
+    "username": "GlassEater",
+    "score": 1500,
+    "correct": 4,
+    "total": 10,
+    "bestStreak": 1,
+    "avgSpeedMs": 15000,
+    "date": "2026-05-08",
+    "submittedAt": 1778217893494
+  },
+  {
+    "username": "mchheng25",
+    "score": 3438,
+    "correct": 5,
+    "total": 10,
+    "bestStreak": 2,
+    "avgSpeedMs": 5420,
+    "date": "2026-05-08",
+    "submittedAt": 1778220638510
+  },
+  {
+    "username": "mchheng25",
+    "score": 8,
+    "correct": 8,
+    "total": 10,
+    "bestStreak": 0,
+    "avgSpeedMs": 0,
+    "date": "2026-05-08",
+    "submittedAt": 1778250427923
+  },
+  {
+    "username": "HoopHead99",
+    "score": 8750,
+    "correct": 9,
+    "total": 10,
+    "bestStreak": 7,
+    "avgSpeedMs": 4200,
+    "date": "2026-05-09",
+    "submittedAt": 1778298478362
+  },
+  {
+    "username": "StatNerd",
+    "score": 7200,
+    "correct": 8,
+    "total": 10,
+    "bestStreak": 5,
+    "avgSpeedMs": 3800,
+    "date": "2026-05-09",
+    "submittedAt": 1778297267098
+  },
+  {
+    "username": "CourtVision",
+    "score": 6500,
+    "correct": 8,
+    "total": 10,
+    "bestStreak": 4,
+    "avgSpeedMs": 6100,
+    "date": "2026-05-09",
+    "submittedAt": 1778296880293
+  },
+  {
+    "username": "BrickLayer",
+    "score": 5800,
+    "correct": 7,
+    "total": 10,
+    "bestStreak": 4,
+    "avgSpeedMs": 5500,
+    "date": "2026-05-09",
+    "submittedAt": 1778299523767
+  },
+  {
+    "username": "WojBomber",
+    "score": 4900,
+    "correct": 7,
+    "total": 10,
+    "bestStreak": 3,
+    "avgSpeedMs": 7200,
+    "date": "2026-05-09",
+    "submittedAt": 1778296981954
+  },
+  {
+    "username": "ClutchGene",
+    "score": 4200,
+    "correct": 6,
+    "total": 10,
+    "bestStreak": 3,
+    "avgSpeedMs": 8900,
+    "date": "2026-05-09",
+    "submittedAt": 1778298012665
+  },
+  {
+    "username": "PickAndRoll",
+    "score": 3600,
+    "correct": 6,
+    "total": 10,
+    "bestStreak": 2,
+    "avgSpeedMs": 9400,
+    "date": "2026-05-09",
+    "submittedAt": 1778297277527
+  },
+  {
+    "username": "IsoKing",
+    "score": 2800,
+    "correct": 5,
+    "total": 10,
+    "bestStreak": 2,
+    "avgSpeedMs": 11000,
+    "date": "2026-05-09",
+    "submittedAt": 1778297713217
+  },
+  {
+    "username": "MidRangeRay",
+    "score": 2100,
+    "correct": 5,
+    "total": 10,
+    "bestStreak": 1,
+    "avgSpeedMs": 13000,
+    "date": "2026-05-09",
+    "submittedAt": 1778297391796
+  },
+  {
+    "username": "GlassEater",
+    "score": 1500,
+    "correct": 4,
+    "total": 10,
+    "bestStreak": 1,
+    "avgSpeedMs": 15000,
+    "date": "2026-05-09",
+    "submittedAt": 1778298583740
+  },
+  {
+    "username": "MikeMoneyMil",
+    "score": 1,
+    "correct": 1,
+    "total": 2,
+    "bestStreak": 1,
+    "avgSpeedMs": 0,
+    "date": "2026-05-09",
+    "submittedAt": 1778300474880
+  },
+  {
+    "username": "MikeMoneyMil",
+    "score": 0,
+    "correct": 0,
+    "total": 1,
+    "bestStreak": 0,
+    "avgSpeedMs": 0,
+    "date": "2026-05-09",
+    "submittedAt": 1778302096323
+  },
+  {
+    "username": "MikeMoneyMil",
+    "score": 2,
+    "correct": 2,
+    "total": 3,
+    "bestStreak": 2,
+    "avgSpeedMs": 0,
+    "date": "2026-05-09",
+    "submittedAt": 1778302214553
+  },
+  {
+    "username": "mikemoneymil",
+    "score": 0,
+    "correct": 0,
+    "total": 1,
+    "bestStreak": 0,
+    "avgSpeedMs": 0,
+    "date": "2026-05-09",
+    "submittedAt": 1778304926499
+  },
+  {
+    "username": "mike",
+    "score": 1,
+    "correct": 1,
+    "total": 2,
+    "bestStreak": 1,
+    "avgSpeedMs": 0,
+    "date": "2026-05-09",
+    "submittedAt": 1778305109934
+  },
+  {
+    "username": "bang",
+    "score": 5,
+    "correct": 5,
+    "total": 6,
+    "bestStreak": 5,
+    "avgSpeedMs": 0,
+    "date": "2026-05-09",
+    "submittedAt": 1778305773232
+  },
+  {
+    "username": "oj",
+    "score": 3,
+    "correct": 3,
+    "total": 4,
+    "bestStreak": 3,
+    "avgSpeedMs": 0,
+    "date": "2026-05-09",
+    "submittedAt": 1778306444730
+  },
+  {
+    "username": "MikeMoneyMil",
+    "score": 1,
+    "correct": 1,
+    "total": 2,
+    "bestStreak": 1,
+    "avgSpeedMs": 0,
+    "date": "2026-05-09",
+    "submittedAt": 1778343321400
+  },
+  {
+    "username": "MikeMoneyMil",
+    "score": 8,
+    "correct": 8,
+    "total": 9,
+    "bestStreak": 8,
+    "avgSpeedMs": 0,
+    "date": "2026-05-09",
+    "submittedAt": 1778343409807
+  },
+  {
+    "username": "MikeMoneyMil",
+    "score": 0,
+    "correct": 0,
+    "total": 1,
+    "bestStreak": 0,
+    "avgSpeedMs": 0,
+    "date": "2026-05-09",
+    "submittedAt": 1778345077917
+  },
+  {
+    "username": "MikeMoneyMil",
+    "score": 1,
+    "correct": 1,
+    "total": 2,
+    "bestStreak": 1,
+    "avgSpeedMs": 0,
+    "date": "2026-05-09",
+    "submittedAt": 1778345784790
+  },
+  {
+    "username": "MikeMoneyMil",
+    "score": 3,
+    "correct": 3,
+    "total": 4,
+    "bestStreak": 3,
+    "avgSpeedMs": 0,
+    "date": "2026-05-09",
+    "submittedAt": 1778345835434
+  },
+  {
+    "username": "MikeMoneyMil",
+    "score": 4,
+    "correct": 4,
+    "total": 5,
+    "bestStreak": 4,
+    "avgSpeedMs": 0,
+    "date": "2026-05-09",
+    "submittedAt": 1778345878451
+  },
+  {
+    "username": "MikeMone",
+    "score": 4,
+    "correct": 4,
+    "total": 5,
+    "bestStreak": 4,
+    "avgSpeedMs": 0,
+    "date": "2026-05-09",
+    "submittedAt": 1778348008477
+  },
+  {
+    "username": "MikeMone",
+    "score": 2,
+    "correct": 2,
+    "total": 3,
+    "bestStreak": 2,
+    "avgSpeedMs": 0,
+    "date": "2026-05-09",
+    "submittedAt": 1778352905119
+  },
+  {
+    "username": "MikeMone",
+    "score": 1,
+    "correct": 1,
+    "total": 2,
+    "bestStreak": 1,
+    "avgSpeedMs": 0,
+    "date": "2026-05-09",
+    "submittedAt": 1778352924232
+  },
+  {
+    "username": "MikeMoneyMil",
+    "score": 0,
+    "correct": 0,
+    "total": 1,
+    "bestStreak": 0,
+    "avgSpeedMs": 0,
+    "date": "2026-05-09",
+    "submittedAt": 1778353616690
+  },
+  {
+    "username": "MikeMoneyMil",
+    "score": 0,
+    "correct": 0,
+    "total": 1,
+    "bestStreak": 0,
+    "avgSpeedMs": 0,
+    "date": "2026-05-09",
+    "submittedAt": 1778353653771
+  },
+  {
+    "username": "MikeMoneyMil",
+    "score": 4,
+    "correct": 4,
+    "total": 5,
+    "bestStreak": 4,
+    "avgSpeedMs": 0,
+    "date": "2026-05-09",
+    "submittedAt": 1778353673107
+  },
+  {
+    "username": "MikeMoneyMil",
+    "score": 5,
+    "correct": 5,
+    "total": 6,
+    "bestStreak": 5,
+    "avgSpeedMs": 0,
+    "date": "2026-05-09",
+    "submittedAt": 1778355284054
+  },
+  {
+    "username": "HoopHead99",
+    "score": 8750,
+    "correct": 9,
+    "total": 10,
+    "bestStreak": 7,
+    "avgSpeedMs": 4200,
+    "date": "2026-05-10",
+    "submittedAt": 1778384832838
+  },
+  {
+    "username": "StatNerd",
+    "score": 7200,
+    "correct": 8,
+    "total": 10,
+    "bestStreak": 5,
+    "avgSpeedMs": 3800,
+    "date": "2026-05-10",
+    "submittedAt": 1778385209740
+  },
+  {
+    "username": "CourtVision",
+    "score": 6500,
+    "correct": 8,
+    "total": 10,
+    "bestStreak": 4,
+    "avgSpeedMs": 6100,
+    "date": "2026-05-10",
+    "submittedAt": 1778386717222
+  },
+  {
+    "username": "BrickLayer",
+    "score": 5800,
+    "correct": 7,
+    "total": 10,
+    "bestStreak": 4,
+    "avgSpeedMs": 5500,
+    "date": "2026-05-10",
+    "submittedAt": 1778385776353
+  },
+  {
+    "username": "WojBomber",
+    "score": 4900,
+    "correct": 7,
+    "total": 10,
+    "bestStreak": 3,
+    "avgSpeedMs": 7200,
+    "date": "2026-05-10",
+    "submittedAt": 1778386619730
+  },
+  {
+    "username": "ClutchGene",
+    "score": 4200,
+    "correct": 6,
+    "total": 10,
+    "bestStreak": 3,
+    "avgSpeedMs": 8900,
+    "date": "2026-05-10",
+    "submittedAt": 1778387229439
+  },
+  {
+    "username": "PickAndRoll",
+    "score": 3600,
+    "correct": 6,
+    "total": 10,
+    "bestStreak": 2,
+    "avgSpeedMs": 9400,
+    "date": "2026-05-10",
+    "submittedAt": 1778385093431
+  },
+  {
+    "username": "IsoKing",
+    "score": 2800,
+    "correct": 5,
+    "total": 10,
+    "bestStreak": 2,
+    "avgSpeedMs": 11000,
+    "date": "2026-05-10",
+    "submittedAt": 1778385660168
+  },
+  {
+    "username": "MidRangeRay",
+    "score": 2100,
+    "correct": 5,
+    "total": 10,
+    "bestStreak": 1,
+    "avgSpeedMs": 13000,
+    "date": "2026-05-10",
+    "submittedAt": 1778384318662
+  },
+  {
+    "username": "GlassEater",
+    "score": 1500,
+    "correct": 4,
+    "total": 10,
+    "bestStreak": 1,
+    "avgSpeedMs": 15000,
+    "date": "2026-05-10",
+    "submittedAt": 1778385005100
+  },
+  {
+    "username": "MikeMoneyMil",
+    "score": 2,
+    "correct": 2,
+    "total": 3,
+    "bestStreak": 2,
+    "avgSpeedMs": 0,
+    "date": "2026-05-10",
+    "submittedAt": 1778387799051
+  },
+  {
+    "username": "MikeMoneyMil",
+    "score": 1,
+    "correct": 1,
+    "total": 2,
+    "bestStreak": 1,
+    "avgSpeedMs": 0,
+    "date": "2026-05-10",
+    "submittedAt": 1778392547676
+  },
+  {
+    "username": "MikeMoneyMil",
+    "score": 1,
+    "correct": 1,
+    "total": 2,
+    "bestStreak": 1,
+    "avgSpeedMs": 0,
+    "date": "2026-05-10",
+    "submittedAt": 1778426223573
+  },
+  {
+    "username": "MikeMoneyMil",
+    "score": 1,
+    "correct": 1,
+    "total": 2,
+    "bestStreak": 1,
+    "avgSpeedMs": 0,
+    "date": "2026-05-10",
+    "submittedAt": 1778426504507
+  },
+  {
+    "username": "MikeMoneyMil",
+    "score": 6,
+    "correct": 6,
+    "total": 7,
+    "bestStreak": 6,
+    "avgSpeedMs": 0,
+    "date": "2026-05-10",
+    "submittedAt": 1778426828651
+  },
+  {
+    "username": "MikeMoneyMil",
+    "score": 6,
+    "correct": 6,
+    "total": 7,
+    "bestStreak": 6,
+    "avgSpeedMs": 0,
+    "date": "2026-05-10",
+    "submittedAt": 1778426845380
+  },
+  {
+    "username": "MikeMoneyMil",
+    "score": 0,
+    "correct": 0,
+    "total": 1,
+    "bestStreak": 0,
+    "avgSpeedMs": 0,
+    "date": "2026-05-10",
+    "submittedAt": 1778427576154
+  },
+  {
+    "username": "MikeMoneyMil",
+    "score": 5,
+    "correct": 5,
+    "total": 6,
+    "bestStreak": 5,
+    "avgSpeedMs": 0,
+    "date": "2026-05-10",
+    "submittedAt": 1778427610404
+  },
+  {
+    "username": "MikeMoney",
+    "score": 3,
+    "correct": 3,
+    "total": 4,
+    "bestStreak": 3,
+    "avgSpeedMs": 0,
+    "date": "2026-05-10",
+    "submittedAt": 1778436772050
+  },
+  {
+    "username": "MikeMoney",
+    "score": 0,
+    "correct": 0,
+    "total": 1,
+    "bestStreak": 0,
+    "avgSpeedMs": 0,
+    "date": "2026-05-10",
+    "submittedAt": 1778436837397
+  },
+  {
+    "username": "MikeMoney",
+    "score": 5,
+    "correct": 5,
+    "total": 6,
+    "bestStreak": 5,
+    "avgSpeedMs": 0,
+    "date": "2026-05-10",
+    "submittedAt": 1778436860698
+  },
+  {
+    "username": "MikeMoneyMil",
+    "score": 2,
+    "correct": 2,
+    "total": 3,
+    "bestStreak": 2,
+    "avgSpeedMs": 0,
+    "date": "2026-05-10",
+    "submittedAt": 1778437951644
+  },
+  {
+    "username": "MikeMoneyMil",
+    "score": 3,
+    "correct": 3,
+    "total": 4,
+    "bestStreak": 3,
+    "avgSpeedMs": 0,
+    "date": "2026-05-10",
+    "submittedAt": 1778437977401
+  },
+  {
+    "username": "mikemoneymil",
+    "score": 6,
+    "correct": 6,
+    "total": 7,
+    "bestStreak": 6,
+    "avgSpeedMs": 0,
+    "date": "2026-05-10",
+    "submittedAt": 1778448858408
+  }
+]
