@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react';
 const LINKS = [
   { href: '/',            label: 'Play'        },
   { href: '/leaderboard', label: 'Leaderboard' },
+  { href: '/contact',     label: 'Contact'     },
 ];
 
 export default function Nav() {
@@ -45,12 +46,12 @@ export default function Nav() {
         ))}
         <div className="flex-1" />
         {isAdmin && (
-          <span className="text-[9px] font-mono text-yellow-400/60 border border-yellow-400/30 rounded px-1.5 py-0.5">
+          <span className="text-[9px] font-sans text-yellow-400/60 border border-yellow-400/30 rounded px-1.5 py-0.5">
             ADMIN
           </span>
         )}
         <button onClick={resetSession}
-          className="text-xs text-white/25 hover:text-white/50 transition-colors font-mono">
+          className="text-xs text-white/25 hover:text-white/50 transition-colors font-sans">
           reset
         </button>
       </div>

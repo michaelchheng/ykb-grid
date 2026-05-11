@@ -125,6 +125,7 @@ export default function Home() {
   const [isAdmin, setIsAdmin]                 = useState(() => typeof window !== 'undefined' && localStorage.getItem('ykb_admin') === '1');
   const [showAdminDrawer, setShowAdminDrawer] = useState(false);
   const [showProfile, setShowProfile]         = useState(false);
+  const [adPopup, setAdPopup]               = useState<'unlock'|'streak'|null>(null);
   const [, forceUpdate]                       = useState(0);
   const [aiBuffer, setAiBuffer]               = useState<Question[]>([]);
   const [fetchingAi, setFetchingAi]           = useState(false);
@@ -335,10 +336,8 @@ export default function Home() {
     };
     const win = window as unknown as { adBreak?: (o: AdBreakObj) => void };
     if (!win.adBreak) {
-      // AdSense not loaded yet — just reward directly (during review period)
-      if (target === 'unlock') fsClearLockout(selectedTier, uid);
-      else { fsClearLockout(selectedTier, uid); saveTodayStreak(streak, selectedTier, uid); }
-      setGameState('hub'); forceUpdate(n => n + 1);
+      // AdSense not yet loaded — show coming-soon popup
+      setAdPopup(target);
       return;
     }
     win.adBreak({
@@ -367,11 +366,10 @@ export default function Home() {
           <div className="relative mb-6">
             <div className="rounded-2xl border border-white/8 bg-white/[0.03] px-8 pt-8 pb-6 text-center"
               style={{ boxShadow: '0 0 60px rgba(250,204,21,0.06) inset' }}>
-              <p className="text-white/50 text-[10px] uppercase tracking-[0.35em] font-mono mb-5">NBA Knowledge Test</p>
               <h1 className="text-[clamp(2.8rem,12vw,5rem)] font-black tracking-tighter leading-[0.9] text-white mb-3">
                 Do You<br /><span style={{ color: '#facc15' }}>Know Ball?</span>
               </h1>
-              <p className="text-white/55 text-[13px] font-mono tracking-[0.2em] mt-4">/ juː · noʊ · bɔːl /</p>
+              <p className="text-white/40 text-sm font-medium mt-4">NBA stats trivia — daily knowledge challenge</p>
             </div>
           </div>
 
@@ -379,14 +377,14 @@ export default function Home() {
           <div className="flex items-center justify-center gap-2 mb-5">
             <button onClick={() => setShowProfile(true)}
               className="flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] hover:bg-white/[0.08] px-4 py-2 transition-all">
-              <span className="text-white/50 text-xs font-mono">{username}</span>
-              <span className="text-[10px] font-mono uppercase tracking-widest" style={{ color: mounted ? rank.color : '#6b7280' }}>
+              <span className="text-white/50 text-xs font-sans">{username}</span>
+              <span className="text-[10px] font-sans uppercase tracking-widest" style={{ color: mounted ? rank.color : '#6b7280' }}>
                 {mounted ? rank.label : 'Casual'}
               </span>
             </button>
             {isAdmin && (
               <button onClick={() => setShowAdminDrawer(true)}
-                className="text-[9px] font-mono text-yellow-400/60 border border-yellow-400/30 rounded px-1.5 py-0.5 hover:bg-yellow-400/10 transition-colors">
+                className="text-[9px] font-sans text-yellow-400/60 border border-yellow-400/30 rounded px-1.5 py-0.5 hover:bg-yellow-400/10 transition-colors">
                 ADMIN
               </button>
             )}
@@ -429,7 +427,7 @@ export default function Home() {
                   borderColor: selectedTier === t.id ? t.color : 'rgba(255,255,255,0.08)',
                   background: selectedTier === t.id ? `${t.color}18` : 'rgba(255,255,255,0.02)',
                 }}>
-                <p className="text-[11px] font-mono font-bold" style={{ color: selectedTier === t.id ? t.color : 'rgba(255,255,255,0.35)' }}>{t.label}</p>
+                <p className="text-[11px] font-sans font-bold" style={{ color: selectedTier === t.id ? t.color : 'rgba(255,255,255,0.35)' }}>{t.label}</p>
               </button>
             ))}
           </div>
@@ -468,7 +466,7 @@ export default function Home() {
                   const tBest    = getBest(t.id);
                   return (
                     <div key={t.id} className="flex items-center gap-3 rounded-xl px-3 py-2.5 border border-white/5 bg-white/[0.02]">
-                      <span className="text-[11px] font-black font-mono w-16 shrink-0" style={{ color: t.color }}>{t.label}</span>
+                      <span className="text-[11px] font-black font-sans w-16 shrink-0" style={{ color: t.color }}>{t.label}</span>
                       <div className="flex-1 flex items-center gap-2">
                         {tLocked ? (
                           <span className="text-xs text-white/35">🔒 locked</span>
@@ -497,7 +495,7 @@ export default function Home() {
           <div className="fixed top-0 right-0 h-full w-80 z-50 bg-[#0f0f18] border-l border-white/10 flex flex-col shadow-2xl">
             <div className="flex items-center justify-between px-5 py-4 border-b border-white/8">
               <div>
-                <p className="text-[10px] font-mono text-white/35 uppercase tracking-widest">Profile</p>
+                <p className="text-sm font-semibold text-white/60">Profile</p>
                 <p className="text-base font-black mt-0.5">{username}</p>
               </div>
               <button onClick={() => setShowProfile(false)} className="text-white/30 hover:text-white/70 text-lg">&#x2715;</button>
@@ -511,11 +509,11 @@ export default function Home() {
                       {fbUser.photoURL && <img src={fbUser.photoURL} className="w-7 h-7 rounded-full" alt="" />}
                       <div>
                         <p className="text-xs font-semibold text-white/80">{fbUser.email}</p>
-                        <p className="text-[10px] font-mono text-white/35">Signed in with Google</p>
+                        <p className="text-xs font-medium text-white/40">Signed in with Google</p>
                       </div>
                     </div>
                     <button onClick={() => { signOut(); setShowProfile(false); }}
-                      className="text-[10px] font-mono text-white/30 hover:text-red-400 transition-colors">Sign out</button>
+                      className="text-[10px] font-sans text-white/30 hover:text-red-400 transition-colors">Sign out</button>
                   </div>
                 ) : (
                   <button onClick={() => signInWithGoogle()}
@@ -527,28 +525,28 @@ export default function Home() {
               </div>
               {/* Handle */}
               <div>
-                <p className="text-[10px] font-mono text-white/35 uppercase tracking-widest mb-2">Handle</p>
+                <p className="text-xs font-semibold text-white/50 mb-2">Handle</p>
                 <div className="flex gap-2">
-                  <span className="flex-1 rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-sm font-mono text-white/70">{username}</span>
+                  <span className="flex-1 rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-sm font-sans text-white/70">{username}</span>
                   <button onClick={() => { setShowProfile(false); setShowModal(true); }}
                     className="px-3 py-2 rounded-lg border border-white/15 text-xs text-white/50 hover:text-white hover:border-white/35 transition-colors">Edit</button>
                 </div>
               </div>
               <div>
-                <p className="text-[10px] font-mono text-white/35 uppercase tracking-widest mb-3">Ball IQ Rank</p>
+                <p className="text-[10px] font-sans text-white/35 uppercase tracking-widest mb-3">Ball IQ Rank</p>
                 <div className="rounded-xl border border-white/8 bg-white/[0.03] p-4">
                   <div className="flex items-center justify-between mb-2">
                     <div>
                       <p className="text-lg font-black" style={{ color: rank.color }}>{rank.label}</p>
                       {nextRank ? (
-                        <p className="text-[11px] font-mono mt-0.5" style={{ color: nextRank.color }}>to {nextRank.label}</p>
+                        <p className="text-[11px] font-sans mt-0.5" style={{ color: nextRank.color }}>to {nextRank.label}</p>
                       ) : (
-                        <p className="text-[11px] text-white/35 font-mono mt-0.5">Max rank reached</p>
+                        <p className="text-xs font-medium text-white/35 mt-0.5">Max rank reached</p>
                       )}
                     </div>
                     <div className="text-right">
                       <p className="text-2xl font-black tabular-nums" style={{ color: rank.color }}>{Math.round(progress)}%</p>
-                      <p className="text-[10px] text-white/25 font-mono">{nextRank ? 'to next' : 'complete'}</p>
+                      <p className="text-xs text-white/30 font-medium">{nextRank ? 'to next' : 'complete'}</p>
                     </div>
                   </div>
                   <div className="h-1.5 bg-white/8 rounded-full overflow-hidden mb-3">
@@ -556,14 +554,14 @@ export default function Home() {
                       style={{ width: `${progress}%`, backgroundColor: nextRank ? nextRank.color : rank.color }} />
                   </div>
                   {nextRank && (
-                    <p className="text-[10px] font-mono text-white/30">
+                    <p className="text-xs text-white/35 font-medium">
                       Reach a streak of {nextRank.minStreak} to unlock {nextRank.label}
                     </p>
                   )}
                 </div>
               </div>
               <div>
-                <p className="text-[10px] font-mono text-white/35 uppercase tracking-widest mb-2">Stats</p>
+                <p className="text-xs font-semibold text-white/50 mb-2">Stats</p>
                 <div className="space-y-2">
                   {[
                     { label: 'Best Streak',    value: String(best),                                              color: '#facc15' },
@@ -572,21 +570,21 @@ export default function Home() {
                     { label: 'Total Correct',  value: localStorage.getItem(`ykb_correct_${selectedTier}`) || '0', color: '#38bdf8' },
                   ].map(s => (
                     <div key={s.label} className="flex items-center justify-between rounded-lg border border-white/6 bg-white/[0.02] px-3 py-2.5">
-                      <span className="text-xs text-white/50 font-mono">{s.label}</span>
+                      <span className="text-xs text-white/50 font-medium">{s.label}</span>
                       <span className="text-sm font-black" style={{ color: s.color }}>{s.value}</span>
                     </div>
                   ))}
                 </div>
               </div>
               <div>
-                <p className="text-[10px] font-mono text-white/35 uppercase tracking-widest mb-2">Rank Ladder</p>
+                <p className="text-[10px] font-sans text-white/35 uppercase tracking-widest mb-2">Rank Ladder</p>
                 <div className="space-y-1">
                   {[...BALL_IQ_RANKS].reverse().map(r => {
                     const isMe = r.label === rank.label;
                     return (
                       <div key={r.label} className={['flex items-center justify-between rounded-lg px-3 py-2 transition-colors', isMe ? 'bg-white/[0.06] border border-white/10' : 'opacity-35'].join(' ')}>
                         <span className="text-xs font-bold" style={{ color: r.color }}>{r.label}</span>
-                        <span className="text-[10px] font-mono text-white/30">{r.minStreak > 0 ? `${r.minStreak}+ streak` : 'starter'}</span>
+                        <span className="text-[10px] font-sans text-white/30">{r.minStreak > 0 ? `${r.minStreak}+ streak` : 'starter'}</span>
                       </div>
                     );
                   })}
@@ -602,16 +600,16 @@ export default function Home() {
           <div className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm" onClick={() => setShowAdminDrawer(false)} />
           <div className="fixed top-0 right-0 h-full w-72 z-50 bg-[#0f0f18] border-l border-white/10 flex flex-col shadow-2xl">
             <div className="flex items-center justify-between px-5 py-4 border-b border-white/8">
-              <p className="text-[10px] font-mono text-yellow-400/60 uppercase tracking-widest">Admin</p>
+              <p className="text-[10px] font-sans text-yellow-400/60 uppercase tracking-widest">Admin</p>
               <button onClick={() => setShowAdminDrawer(false)} className="text-white/30 hover:text-white/70 text-lg">&#x2715;</button>
             </div>
             <div className="flex-1 px-5 py-6 space-y-3">
               <button onClick={() => { (['easy','medium','hard','niche'] as const).forEach(t => localStorage.removeItem(`ykb_lockout_${t}`)); setShowAdminDrawer(false); forceUpdate(n => n + 1); }}
-                className="w-full rounded-lg border border-white/10 bg-white/[0.03] hover:bg-white/[0.07] px-3 py-3 text-xs text-white/60 font-mono transition-colors">
+                className="w-full rounded-lg border border-white/10 bg-white/[0.03] hover:bg-white/[0.07] px-3 py-3 text-xs text-white/60 font-sans transition-colors">
                 Reset Lockout
               </button>
               <button onClick={() => { (['easy','medium','hard','niche'] as const).forEach(t => localStorage.removeItem(`ykb_today_${t}`)); setShowAdminDrawer(false); forceUpdate(n => n + 1); }}
-                className="w-full rounded-lg border border-white/10 bg-white/[0.03] hover:bg-white/[0.07] px-3 py-3 text-xs text-white/60 font-mono transition-colors">
+                className="w-full rounded-lg border border-white/10 bg-white/[0.03] hover:bg-white/[0.07] px-3 py-3 text-xs text-white/60 font-sans transition-colors">
                 Reset Today Streak
               </button>
               <button onClick={() => {
@@ -638,11 +636,11 @@ export default function Home() {
         <p className="text-white/40 text-sm mb-8">your streak today</p>
 
         <div className="rounded-xl border border-white/8 bg-white/[0.03] px-4 py-3 mb-3">
-          <p className="text-white/30 text-xs font-mono">Come back tomorrow to keep playing.</p>
+          <p className="text-white/40 text-sm font-medium">Come back tomorrow to keep playing.</p>
         </div>
 
         <button onClick={() => { setGameState('hub'); forceUpdate(n => n + 1); }}
-          className="px-6 py-3 rounded-xl border border-white/15 text-white/50 text-sm font-mono hover:text-white hover:border-white/30 transition-colors">
+          className="px-6 py-3 rounded-xl border border-white/15 text-white/50 text-sm font-medium hover:text-white hover:border-white/25 transition-colors">
           Back
         </button>
       </div>
@@ -679,7 +677,7 @@ export default function Home() {
             })()}
             {currentQ.type === 'gauntlet' && (
               <>
-                <p className="text-[10px] font-mono text-white/30 mb-2">{currentQ.data.season} · {currentQ.data.teamHint}</p>
+                <p className="text-[10px] font-sans text-white/30 mb-2">{currentQ.data.season} · {currentQ.data.teamHint}</p>
                 <p className="text-sm font-bold text-white mb-2">Answer: <span style={{ color: '#34d399' }}>{currentQ.data.answer}</span></p>
                 <p className="text-white/35 text-xs italic">&ldquo;{currentQ.data.flavor}&rdquo;</p>
               </>
@@ -691,11 +689,11 @@ export default function Home() {
                   {currentQ.data.players.map((p, i) => (
                     <div key={p.name} className="flex items-center justify-between">
                       <span className="text-xs text-white/60">{i + 1}. {p.name}</span>
-                      <span className="text-xs font-mono font-black" style={{ color: '#34d399' }}>{p.value} {currentQ.data.statUnit}</span>
+                      <span className="text-xs font-sans font-black" style={{ color: '#34d399' }}>{p.value} {currentQ.data.statUnit}</span>
                     </div>
                   ))}
                 </div>
-                <p className="text-xs font-mono text-white/30 mt-2">{draftScore}/5 positions correct</p>
+                <p className="text-xs text-white/40 font-medium mt-2">{draftScore}/5 positions correct</p>
               </>
             )}
           </div>
@@ -717,6 +715,24 @@ export default function Home() {
           </a>
         </div>
       </div>
+
+      {adPopup && (
+        <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center px-6">
+          <div className="max-w-xs w-full rounded-2xl border border-white/10 bg-[#0f0f18] p-8 text-center">
+            <p className="text-4xl mb-4">📺</p>
+            <p className="text-white font-black text-xl mb-2">Ads Coming Soon</p>
+            <p className="text-white/50 text-sm mb-6">
+              {adPopup === 'streak'
+                ? 'Once ads are live, watching one will save your streak.'
+                : 'Once ads are live, watching one will unlock your tier.'}
+            </p>
+            <button onClick={() => setAdPopup(null)}
+              className="w-full py-3 rounded-xl bg-yellow-400 text-black font-black text-sm hover:bg-yellow-300 transition-all">
+              Got it
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 
@@ -738,17 +754,17 @@ export default function Home() {
     <div className="min-h-screen bg-[#08080d] text-white flex flex-col">
       <div className="border-b border-white/[0.06] px-5 py-3 flex items-center justify-between">
         <button onClick={() => { setGameState('hub'); forceUpdate(n => n + 1); }}
-          className="text-white/30 hover:text-white/60 text-xs font-mono transition-colors">&#x2190; Hub</button>
-        <p className="text-[10px] font-mono text-white/30 uppercase tracking-widest">{modeLabel}</p>
+          className="text-white/30 hover:text-white/60 text-xs font-sans transition-colors">&#x2190; Hub</button>
+        <p className="text-xs text-white/40 font-semibold">{modeLabel}</p>
         <div className="flex items-center gap-1.5">
           {isAdmin && !isRevealed && (
             <button onClick={() => handleResult(true)}
-              className="text-[9px] font-mono text-yellow-400/60 border border-yellow-400/30 rounded px-1.5 py-0.5 hover:bg-yellow-400/10 transition-colors mr-1">
+              className="text-[9px] font-sans text-yellow-400/60 border border-yellow-400/30 rounded px-1.5 py-0.5 hover:bg-yellow-400/10 transition-colors mr-1">
               SKIP
             </button>
           )}
           <span className="text-xl font-black tabular-nums" style={{ color: '#facc15' }}>{streak}</span>
-          <span className="text-[10px] font-mono text-white/30">&#x1F525;</span>
+          <span className="text-[10px] font-sans text-white/30">&#x1F525;</span>
         </div>
       </div>
 
@@ -762,7 +778,7 @@ export default function Home() {
             return (
               <>
                 <div className="text-center mb-6">
-                  <p className="text-xs font-mono text-white/35 uppercase tracking-wider mb-1">{q.subLabel}</p>
+                  <p className="text-xs font-sans text-white/35 uppercase tracking-wider mb-1">{q.subLabel}</p>
                   <p className="text-2xl font-black">{q.label}</p>
                 </div>
                 <div className="space-y-3">
@@ -805,7 +821,7 @@ export default function Home() {
                               <div className="flex-1 h-1.5 rounded-full bg-white/10 overflow-hidden">
                                 <div className="h-full rounded-full" style={{ width: `${cpct}%`, background: isWinner ? '#34d399' : '#f87171' }} />
                               </div>
-                              <span className="text-[10px] font-mono text-white/35 tabular-nums w-8 text-right">{cpct}%</span>
+                              <span className="text-[10px] font-sans text-white/35 tabular-nums w-8 text-right">{cpct}%</span>
                             </div>
                           </div>
                         )}
@@ -825,25 +841,25 @@ export default function Home() {
             return (
               <>
                 <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-5 mb-5">
-                  <p className="text-[10px] font-mono text-white/25 mb-4 text-center">{q.season} &middot; {q.teamHint} &middot; {q.positionHint}</p>
+                  <p className="text-[10px] font-sans text-white/25 mb-4 text-center">{q.season} &middot; {q.teamHint} &middot; {q.positionHint}</p>
                   <div className="grid grid-cols-3 gap-3 mb-3">
-                    <div className="text-center"><p className="text-2xl font-black">{q.ppg.toFixed(1)}</p><p className="text-[10px] text-white/35 font-mono">PPG</p></div>
-                    {q.rpg !== undefined && <div className="text-center"><p className="text-2xl font-black">{q.rpg.toFixed(1)}</p><p className="text-[10px] text-white/35 font-mono">RPG</p></div>}
-                    {q.apg !== undefined && <div className="text-center"><p className="text-2xl font-black">{q.apg.toFixed(1)}</p><p className="text-[10px] text-white/35 font-mono">APG</p></div>}
+                    <div className="text-center"><p className="text-2xl font-black">{q.ppg.toFixed(1)}</p><p className="text-[10px] text-white/35 font-sans">PPG</p></div>
+                    {q.rpg !== undefined && <div className="text-center"><p className="text-2xl font-black">{q.rpg.toFixed(1)}</p><p className="text-[10px] text-white/35 font-sans">RPG</p></div>}
+                    {q.apg !== undefined && <div className="text-center"><p className="text-2xl font-black">{q.apg.toFixed(1)}</p><p className="text-[10px] text-white/35 font-sans">APG</p></div>}
                   </div>
                   {(q.spg !== undefined || q.bpg !== undefined || q.fg_pct !== undefined || q.fg3_pct !== undefined) && (
                     <div className="grid grid-cols-3 gap-2 pt-3 border-t border-white/8">
-                      {q.spg   !== undefined && <div className="text-center"><p className="text-lg font-black">{q.spg.toFixed(1)}</p><p className="text-[10px] text-white/30 font-mono">SPG</p></div>}
-                      {q.bpg   !== undefined && <div className="text-center"><p className="text-lg font-black">{q.bpg.toFixed(1)}</p><p className="text-[10px] text-white/30 font-mono">BPG</p></div>}
-                      {q.fg_pct  !== undefined && <div className="text-center"><p className="text-lg font-black">{q.fg_pct.toFixed(1)}%</p><p className="text-[10px] text-white/30 font-mono">FG%</p></div>}
-                      {q.fg3_pct !== undefined && <div className="text-center"><p className="text-lg font-black">{q.fg3_pct.toFixed(1)}%</p><p className="text-[10px] text-white/30 font-mono">3P%</p></div>}
+                      {q.spg   !== undefined && <div className="text-center"><p className="text-lg font-black">{q.spg.toFixed(1)}</p><p className="text-[10px] text-white/30 font-sans">SPG</p></div>}
+                      {q.bpg   !== undefined && <div className="text-center"><p className="text-lg font-black">{q.bpg.toFixed(1)}</p><p className="text-[10px] text-white/30 font-sans">BPG</p></div>}
+                      {q.fg_pct  !== undefined && <div className="text-center"><p className="text-lg font-black">{q.fg_pct.toFixed(1)}%</p><p className="text-[10px] text-white/30 font-sans">FG%</p></div>}
+                      {q.fg3_pct !== undefined && <div className="text-center"><p className="text-lg font-black">{q.fg3_pct.toFixed(1)}%</p><p className="text-[10px] text-white/30 font-sans">3P%</p></div>}
                     </div>
                   )}
                   {gauntletPick && (
                     <p className="text-white/30 text-xs italic mt-4 pt-3 border-t border-white/8 leading-relaxed">&ldquo;{q.flavor}&rdquo;</p>
                   )}
                 </div>
-                <p className="text-[10px] font-mono text-white/30 uppercase tracking-widest mb-3 text-center">Who is this?</p>
+                <p className="text-[10px] font-sans text-white/30 uppercase tracking-widest mb-3 text-center">Who is this?</p>
                 <div className="grid grid-cols-2 gap-3">
                   {currentQ.options.map(opt => {
                     const isCorrect = opt === q.answer;
@@ -876,9 +892,9 @@ export default function Home() {
             return (
               <>
                 <div className="mb-4">
-                  <p className="text-[10px] font-mono text-yellow-400/60 uppercase tracking-widest mb-1">All 5 correct to continue</p>
+                  <p className="text-[10px] font-sans text-yellow-400/60 uppercase tracking-widest mb-1">All 5 correct to continue</p>
                   <p className="font-black text-xl">{c.statLabel}</p>
-                  <p className="text-white/35 text-xs font-mono mt-0.5">{c.season} &middot; Highest &rarr; Lowest</p>
+                  <p className="text-white/35 text-xs font-sans mt-0.5">{c.season} &middot; Highest &rarr; Lowest</p>
                 </div>
                 <div className="space-y-2 mb-4">
                   {Array.from({ length: 5 }).map((_, i) => {
@@ -895,7 +911,7 @@ export default function Home() {
                             ? (correct ? 'rgba(52,211,153,0.06)' : p ? 'rgba(248,113,113,0.06)' : 'rgba(255,255,255,0.02)')
                             : 'rgba(255,255,255,0.02)',
                         }}>
-                        <span className="text-[10px] font-mono text-white/30 w-4">{i + 1}</span>
+                        <span className="text-[10px] font-sans text-white/30 w-4">{i + 1}</span>
                         <div className="flex-1">
                           {p ? (
                             <div className="flex items-center justify-between">
@@ -905,7 +921,7 @@ export default function Home() {
                                   <p className="font-black text-sm tabular-nums" style={{ color: correct ? '#34d399' : '#f87171' }}>
                                     {c.players[i]?.value} {c.statUnit}
                                   </p>
-                                  {!correct && answerP && <p className="text-[10px] text-white/35 font-mono">{answerP.name}</p>}
+                                  {!correct && answerP && <p className="text-[10px] text-white/35 font-sans">{answerP.name}</p>}
                                 </div>
                               )}
                             </div>
@@ -926,7 +942,7 @@ export default function Home() {
                       <button key={p.name} onClick={() => draftPick(p)}
                         className="rounded-lg border border-white/15 bg-white/[0.04] hover:bg-white/[0.08] px-3 py-2 text-sm font-bold transition-all active:scale-[0.98]">
                         {p.name}
-                        {p.hint && <span className="text-white/30 text-[10px] font-mono ml-1.5">{p.hint}</span>}
+                        {p.hint && <span className="text-white/30 text-[10px] font-sans ml-1.5">{p.hint}</span>}
                       </button>
                     ))}
                   </div>
