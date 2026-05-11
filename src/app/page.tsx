@@ -627,7 +627,7 @@ export default function Home() {
   if (gameState === 'wrong') return (
     <div className="min-h-screen bg-[#08080d] text-white flex items-center justify-center px-5">
       <div className="max-w-sm w-full text-center">
-        <p className="text-xs text-white/40 font-medium mb-5">You do not know ball.</p>
+        <p className="text-2xl font-black text-red-500 mb-5">You do not know ball.</p>
         <p className="text-8xl font-black tabular-nums leading-none mb-1" style={{ color: '#facc15' }}>{streak}</p>
         <p className="text-white/50 text-base font-semibold mb-1">streak ended</p>
         {getBest() > streak && <p className="text-white/30 text-sm mb-2">best ever: <span className="font-bold text-white/50">{getBest()}</span></p>}

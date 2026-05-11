@@ -56,7 +56,12 @@ export default function UsernameModal({ onSubmit }: Props) {
   async function confirmHandle() {
     const h = handle.trim();
     if (h.length < 2) { setError('Pick a handle (2+ chars).'); return; }
-    await syncAndSubmit(pendingUid, h, onSubmit);
+    setLoading(true); setError('');
+    try {
+      await syncAndSubmit(pendingUid, h, onSubmit);
+    } catch {
+      setError('Something went wrong. Try again.');
+    } finally { setLoading(false); }
   }
 
   async function submitEmail() {
@@ -177,9 +182,9 @@ export default function UsernameModal({ onSubmit }: Props) {
               placeholder="e.g. CourtVision" maxLength={20} autoFocus
               className="w-full bg-white/5 border border-white/12 rounded-lg px-4 py-3 text-white placeholder-white/25 text-sm focus:outline-none focus:border-white/30 transition-colors" />
             {error && <p className="text-red-400 text-xs text-center">{error}</p>}
-            <button onClick={confirmHandle} disabled={handle.trim().length < 2}
+            <button onClick={confirmHandle} disabled={handle.trim().length < 2 || loading}
               className="w-full py-3 rounded-lg bg-white text-black font-bold text-sm disabled:opacity-25 hover:bg-white/90 transition-all">
-              Let&apos;s go
+              {loading ? '…' : 'Let\'s go'}
             </button>
           </div>
         )}
