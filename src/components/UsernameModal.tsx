@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { signInWithPopup, createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile } from 'firebase/auth';
+import { signInWithPopup, createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile, sendPasswordResetEmail } from 'firebase/auth';
 import { auth, googleProvider } from '@/lib/firebase';
 import { pullFromFirestore, saveUsername } from '@/lib/tierSync';
 
@@ -29,7 +29,7 @@ const GoogleIcon = () => (
 );
 
 export default function UsernameModal({ onSubmit }: Props) {
-  const [step,     setStep]     = useState<'splash' | 'email' | 'guest' | 'pick-handle'>('splash');
+  const [step,     setStep]     = useState<'splash' | 'email' | 'guest' | 'pick-handle' | 'forgot'>('splash');
   const [mode,     setMode]     = useState<'signup' | 'login'>('signup');
   const [handle,   setHandle]   = useState('');
   const [email,    setEmail]    = useState('');
@@ -86,6 +86,18 @@ export default function UsernameModal({ onSubmit }: Props) {
       if (code === 'auth/email-already-in-use') setError('Account exists — try logging in.');
       else if (code === 'auth/user-not-found' || code === 'auth/wrong-password') setError('Wrong email or password.');
       else setError('Something went wrong. Try again.');
+    } finally { setLoading(false); }
+  }
+
+  async function sendReset() {
+    const em = email.trim();
+    if (!em) { setError('Enter your email first.'); return; }
+    setLoading(true); setError('');
+    try {
+      await sendPasswordResetEmail(auth, em);
+      setStep('forgot');
+    } catch {
+      setError('Could not send reset email. Check the address.');
     } finally { setLoading(false); }
   }
 
@@ -164,9 +176,29 @@ export default function UsernameModal({ onSubmit }: Props) {
                   {mode === 'signup' ? 'Log in' : 'Sign up'}
                 </button>
               </p>
+              {mode === 'login' && (
+                <button onClick={sendReset} disabled={loading}
+                  className="text-white/30 text-xs hover:text-white/50 transition-colors disabled:opacity-50">
+                  Forgot password?
+                </button>
+              )}
               <button onClick={() => { setStep('splash'); setError(''); }}
                 className="text-white/20 text-xs hover:text-white/40 transition-colors">← back</button>
             </div>
+          </div>
+        )}
+
+        {/* ── FORGOT PASSWORD CONFIRMATION ── */}
+        {step === 'forgot' && (
+          <div className="space-y-5 text-center">
+            <div>
+              <h2 className="text-2xl font-black text-white">Check your email</h2>
+              <p className="text-white/35 text-sm mt-2">We sent a reset link to <span className="text-white/60">{email}</span>. Click it and come back to log in.</p>
+            </div>
+            <button onClick={() => { setStep('email'); setMode('login'); setPassword(''); setError(''); }}
+              className="w-full py-3 rounded-lg bg-white text-black font-bold text-sm hover:bg-white/90 transition-all">
+              Back to log in
+            </button>
           </div>
         )}
 
