@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 
-type Tier = 'easy' | 'medium' | 'hard' | 'niche';
+type Tier = 'easy' | 'medium' | 'hard' | 'unhinged';
 
 interface TierStats { bestStreak: number; totalCorrect: number; totalAnswered: number; }
 interface Entry { uid: string; username: string; tiers: Record<string, TierStats>; }
@@ -11,7 +11,7 @@ interface Entry { uid: string; username: string; tiers: Record<string, TierStats
 function ballIQ(e: Entry): { label: string; color: string } {
   const g = (key: string): TierStats => e.tiers[key] ?? { bestStreak: 0, totalCorrect: 0, totalAnswered: 0 };
   const acc = (s: TierStats) => s.totalAnswered > 0 ? s.totalCorrect / s.totalAnswered : 0;
-  const nicheAcc = acc(g('niche')), hardAcc = acc(g('hard')), medAcc = acc(g('medium')), easyAcc = acc(g('easy'));
+  const nicheAcc = acc(g('unhinged')), hardAcc = acc(g('hard')), medAcc = acc(g('medium')), easyAcc = acc(g('easy'));
   if (nicheAcc >= 0.6)                         return { label: 'Niche',               color: '#facc15' };
   if (hardAcc  >= 0.75 && medAcc >= 0.7)       return { label: 'Elite Ball Knowledge', color: '#f97316' };
   if (hardAcc  >= 0.5  || medAcc >= 0.7)       return { label: 'Film Room',            color: '#c084fc' };
@@ -23,7 +23,7 @@ const TIERS: { key: Tier; label: string; color: string; desc: string }[] = [
   { key: 'easy',   label: 'Easy',   color: '#34d399', desc: 'The stuff you should know'   },
   { key: 'medium', label: 'Medium', color: '#fbbf24', desc: 'Requires some film time'     },
   { key: 'hard',   label: 'Hard',   color: '#f97316', desc: 'Deep cuts, rare facts'       },
-  { key: 'niche',  label: 'Niche',  color: '#c084fc', desc: 'Borderline impossible'       },
+  { key: 'unhinged',  label: 'Niche',  color: '#c084fc', desc: 'Borderline impossible'       },
 ];
 
 function RankBadge({ rank }: { rank: number }) {
