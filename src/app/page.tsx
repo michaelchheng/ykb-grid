@@ -325,32 +325,8 @@ export default function Home() {
   const locked  = mounted && isLockedOut(selectedTier);
 
   function watchAd(target: 'unlock' | 'streak') {
-    type AdBreakDone = () => void;
-    type AdBreakObj  = {
-      type: string; name: string;
-      beforeReward: (show: AdBreakDone) => void;
-      adDismissed: () => void;
-      adViewed: () => void;
-      afterAd: () => void;
-    };
-    const win = window as unknown as { adBreak?: (o: AdBreakObj) => void };
-    // adBreak shim exists but Google hasn't approved ads yet — always show popup for now
-    if (!win.adBreak || process.env.NODE_ENV !== 'never') {
-      setAdPopup(target);
-      return;
-    }
-    win.adBreak({
-      type: 'reward',
-      name: target === 'unlock' ? 'tier-unlock' : 'streak-save',
-      beforeReward: (showAdFn) => { showAdFn(); },
-      adDismissed: () => { /* user skipped — no reward */ },
-      adViewed: () => {
-        if (target === 'unlock') fsClearLockout(selectedTier, uid);
-        else { fsClearLockout(selectedTier, uid); saveTodayStreak(streak, selectedTier, uid); }
-        setGameState('hub'); forceUpdate(n => n + 1);
-      },
-      afterAd: () => {},
-    });
+    // adBreak shim exists but Google hasn't approved ads yet — show popup
+    setAdPopup(target);
   }
 
   // ── HUB ───────────────────────────────────────────────────────────────────
