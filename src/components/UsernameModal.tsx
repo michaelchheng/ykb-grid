@@ -23,7 +23,7 @@ export default function UsernameModal({ onSubmit }: Props) {
           <div className="space-y-8">
             <div>
               <h1 className="text-[clamp(3rem,12vw,5rem)] font-black tracking-tighter leading-none text-white">
-                You Know<br /><span style={{ color: '#facc15' }}>Ball</span>
+                Do You Know<br /><span style={{ color: '#facc15' }}>Ball?</span>
               </h1>
             </div>
             <button
@@ -32,7 +32,7 @@ export default function UsernameModal({ onSubmit }: Props) {
             >
               Let&apos;s find out
             </button>
-            <p className="text-white/20 text-xs font-mono">NBA stats trivia · daily lockout by tier</p>
+            <p className="text-white/35 text-sm font-medium">NBA stats trivia · daily lockout by tier</p>
           </div>
 
         ) : (
