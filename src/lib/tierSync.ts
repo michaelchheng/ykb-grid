@@ -117,3 +117,12 @@ export function clearLockout(tier: Tier4, uid?: string | null) {
   localStorage.removeItem(`ykb_lockout_${tier}`);
   if (uid) pushToFirestore(uid, tier, { lockout: null });
 }
+
+// ── Save username to user root doc so leaderboard can read it ────────────────
+export async function saveUsername(uid: string, username: string) {
+  try {
+    await setDoc(doc(db, 'users', uid), { username, updatedAt: serverTimestamp() }, { merge: true });
+  } catch (e) {
+    console.warn('[tierSync] saveUsername failed:', e);
+  }
+}

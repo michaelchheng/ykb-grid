@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { signInWithPopup, createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import { auth, googleProvider } from '@/lib/firebase';
-import { pullFromFirestore } from '@/lib/tierSync';
+import { pullFromFirestore, saveUsername } from '@/lib/tierSync';
 
 interface Props { onSubmit: (name: string) => void; }
 
@@ -12,7 +12,10 @@ const TIERS = ['easy','medium','hard','unhinged'] as const;
 async function syncAndSubmit(uid: string, name: string, onSubmit: (n: string) => void) {
   localStorage.setItem('ykb_uid',      uid);
   localStorage.setItem('ykb_username', name);
-  await Promise.all(TIERS.map(t => pullFromFirestore(uid, t)));
+  await Promise.all([
+    saveUsername(uid, name),
+    ...TIERS.map(t => pullFromFirestore(uid, t)),
+  ]);
   onSubmit(name);
 }
 

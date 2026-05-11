@@ -1,23 +1,21 @@
 import { NextResponse } from 'next/server';
-import { adminDb, adminAuth } from '@/lib/firebase-admin';
+import { adminDb } from '@/lib/firebase-admin';
 
 export const revalidate = 60; // cache 60s
 
 export async function GET() {
   try {
-    // Fetch all users' tier sub-collections in parallel
     const usersSnap = await adminDb.collection('users').listDocuments();
 
     const entries = await Promise.all(
       usersSnap.map(async (userRef) => {
-        const [tiersSnap, userRecord] = await Promise.all([
+        const [tiersSnap, userDoc] = await Promise.all([
           userRef.collection('tiers').get(),
-          adminAuth.getUser(userRef.id).catch(() => null),
+          userRef.get(),
         ]);
 
         const username: string =
-          (userRecord?.displayName) ||
-          (userRecord?.email?.split('@')[0]) ||
+          userDoc.data()?.username ||
           userRef.id.slice(0, 8);
 
         const tiers: Record<string, { bestStreak: number; totalCorrect: number; totalAnswered: number }> = {};

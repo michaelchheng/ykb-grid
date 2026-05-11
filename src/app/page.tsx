@@ -334,8 +334,8 @@ export default function Home() {
       afterAd: () => void;
     };
     const win = window as unknown as { adBreak?: (o: AdBreakObj) => void };
-    if (!win.adBreak) {
-      // AdSense not yet loaded — show coming-soon popup
+    // adBreak shim exists but Google hasn't approved ads yet — always show popup for now
+    if (!win.adBreak || process.env.NODE_ENV !== 'never') {
       setAdPopup(target);
       return;
     }
