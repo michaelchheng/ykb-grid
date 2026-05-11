@@ -14,6 +14,7 @@ export async function GET() {
           userRef.get(),
         ]);
 
+        const hasUsername = userDoc.exists && !!userDoc.data()?.username;
         const username: string =
           userDoc.data()?.username ||
           userRef.id.slice(0, 8);
@@ -28,14 +29,19 @@ export async function GET() {
           };
         });
 
-        return { uid: userRef.id, username, tiers };
+        return { uid: userRef.id, username, hasUsername, tiers };
       })
     );
 
-    // Filter out users with zero activity
+    // Show users with activity OR who explicitly picked a username
     const active = entries.filter(e =>
-      Object.values(e.tiers).some(t => t.totalAnswered > 0)
+      Object.values(e.tiers).some(t => t.totalAnswered > 0) || e.hasUsername
     );
+
+    function userDocHasUsername(e: { uid: string; username: string }) {
+      // Show users who set a real username even if they haven't played yet
+      return e.username.length > 8 || !/^[a-f0-9]+$/.test(e.username);
+    }
 
     return NextResponse.json({ entries: active });
   } catch (err) {
