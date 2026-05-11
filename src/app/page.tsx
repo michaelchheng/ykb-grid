@@ -324,6 +324,37 @@ export default function Home() {
   const { rank, next: nextRank, progress } = getBallIQ(best);
   const locked  = mounted && isLockedOut(selectedTier);
 
+  function watchAd(target: 'unlock' | 'streak') {
+    type AdBreakDone = () => void;
+    type AdBreakObj  = {
+      type: string; name: string;
+      beforeReward: (show: AdBreakDone) => void;
+      adDismissed: () => void;
+      adViewed: () => void;
+      afterAd: () => void;
+    };
+    const win = window as unknown as { adBreak?: (o: AdBreakObj) => void };
+    if (!win.adBreak) {
+      // AdSense not loaded yet — just reward directly (during review period)
+      if (target === 'unlock') fsClearLockout(selectedTier, uid);
+      else { fsClearLockout(selectedTier, uid); saveTodayStreak(streak, selectedTier, uid); }
+      setGameState('hub'); forceUpdate(n => n + 1);
+      return;
+    }
+    win.adBreak({
+      type: 'reward',
+      name: target === 'unlock' ? 'tier-unlock' : 'streak-save',
+      beforeReward: (showAdFn) => { showAdFn(); },
+      adDismissed: () => { /* user skipped — no reward */ },
+      adViewed: () => {
+        if (target === 'unlock') fsClearLockout(selectedTier, uid);
+        else { fsClearLockout(selectedTier, uid); saveTodayStreak(streak, selectedTier, uid); }
+        setGameState('hub'); forceUpdate(n => n + 1);
+      },
+      afterAd: () => {},
+    });
+  }
+
   // ── HUB ───────────────────────────────────────────────────────────────────
   if (gameState === 'hub') return (
     <div className="bg-[#08080d] text-white min-h-screen">
@@ -368,23 +399,23 @@ export default function Home() {
           </div>
 
           {mounted && (best > 0 || todayS > 0) && (
-            <div className="flex items-center justify-center gap-8 mb-8">
+            <div className="flex items-center justify-center gap-10 mb-8">
               {todayS > 0 && (
                 <div className="text-center">
-                  <p className="text-4xl font-black tabular-nums" style={{ color: '#facc15' }}>{todayS}</p>
-                  <p className="text-[10px] font-mono text-white/30 uppercase tracking-widest mt-1">today</p>
+                  <p className="text-6xl font-black tabular-nums leading-none" style={{ color: '#facc15' }}>{todayS} 🔥</p>
+                  <p className="text-xs text-white/45 mt-2 font-medium">today&apos;s streak</p>
                 </div>
               )}
               {best > 0 && (
                 <div className="text-center">
-                  <p className="text-4xl font-black tabular-nums text-white/35">{best}</p>
-                  <p className="text-[10px] font-mono text-white/20 uppercase tracking-widest mt-1">best</p>
+                  <p className="text-4xl font-black tabular-nums leading-none text-white/50">{best}</p>
+                  <p className="text-xs text-white/30 mt-2 font-medium">best ever</p>
                 </div>
               )}
             </div>
           )}
 
-          <p className="text-[10px] font-mono text-white/20 uppercase tracking-[0.3em] mb-3">Difficulty</p>
+          <p className="text-xs text-white/35 font-semibold mb-3">Difficulty</p>
           <div className="grid grid-cols-4 gap-2 mb-6">
             {([
               { id: 'easy',     label: 'Easy',   color: '#34d399' },
@@ -407,7 +438,7 @@ export default function Home() {
             <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-6 py-6 mb-8">
               <p className="text-2xl font-black mb-1">🔒</p>
               <p className="text-white/60 text-sm mb-1">Locked until midnight</p>
-              <p className="text-white/30 text-xs font-mono">You got one wrong. Come back tomorrow.</p>
+              <p className="text-white/40 text-sm">You got one wrong. Come back tomorrow.</p>
             </div>
           ) : (
             <button onClick={startGame}
@@ -422,8 +453,8 @@ export default function Home() {
           {mounted && (
             <div className="mt-8 rounded-2xl border border-white/6 bg-white/[0.02] p-5 text-left w-full">
               <div className="flex items-center justify-between mb-4">
-                <p className="text-[10px] font-mono text-white/30 uppercase tracking-[0.3em]">Your Tiers</p>
-                <a href="/leaderboard" className="text-[10px] font-mono text-white/35 hover:text-white/70 transition-colors">Leaderboard →</a>
+                <p className="text-xs text-white/40 font-semibold">Your Tiers</p>
+                <a href="/leaderboard" className="text-xs text-white/40 hover:text-white/70 transition-colors font-medium">Leaderboard →</a>
               </div>
               <div className="space-y-2">
                 {([
@@ -440,15 +471,15 @@ export default function Home() {
                       <span className="text-[11px] font-black font-mono w-16 shrink-0" style={{ color: t.color }}>{t.label}</span>
                       <div className="flex-1 flex items-center gap-2">
                         {tLocked ? (
-                          <span className="text-[10px] font-mono text-white/30">🔒 locked until midnight</span>
+                          <span className="text-xs text-white/35">🔒 locked</span>
                         ) : tStreak > 0 ? (
-                          <span className="text-[10px] font-mono" style={{ color: t.color }}>{tStreak} streak 🔥</span>
+                          <span className="text-xs font-semibold" style={{ color: t.color }}>{tStreak} 🔥</span>
                         ) : (
-                          <span className="text-[10px] font-mono text-white/20">not played today</span>
+                          <span className="text-xs text-white/25">not played</span>
                         )}
                       </div>
                       {tBest > 0 && (
-                        <span className="text-[10px] font-mono text-white/25 tabular-nums">best {tBest}</span>
+                        <span className="text-xs text-white/30 tabular-nums">best {tBest}</span>
                       )}
                     </div>
                   );
@@ -602,7 +633,7 @@ export default function Home() {
   if (gameState === 'locked') return (
     <div className="min-h-screen bg-[#08080d] text-white flex items-center justify-center px-5">
       <div className="max-w-sm w-full text-center">
-        <p className="text-[10px] font-mono text-white/30 uppercase tracking-[0.3em] mb-6">Locked Until Midnight</p>
+        <p className="text-xs text-white/40 font-medium mb-5">Locked Until Midnight</p>
         <p className="text-8xl font-black tabular-nums mb-2" style={{ color: '#facc15' }}>{getTodayStreak(selectedTier)}</p>
         <p className="text-white/40 text-sm mb-8">your streak today</p>
 
@@ -622,10 +653,10 @@ export default function Home() {
   if (gameState === 'wrong') return (
     <div className="min-h-screen bg-[#08080d] text-white flex items-center justify-center px-5">
       <div className="max-w-sm w-full text-center">
-        <p className="text-[10px] font-mono text-white/30 uppercase tracking-[0.3em] mb-4">Wrong. Locked.</p>
-        <p className="text-8xl font-black tabular-nums mb-2" style={{ color: '#facc15' }}>{streak}</p>
-        <p className="text-white/40 text-sm mb-1">streak ended</p>
-        {getBest() > streak && <p className="text-white/25 text-xs font-mono mb-6">best ever: {getBest()}</p>}
+        <p className="text-xs text-white/40 font-medium mb-5">Wrong answer — locked out</p>
+        <p className="text-8xl font-black tabular-nums leading-none mb-1" style={{ color: '#facc15' }}>{streak}</p>
+        <p className="text-white/50 text-base font-semibold mb-1">streak ended</p>
+        {getBest() > streak && <p className="text-white/30 text-sm mb-2">best ever: <span className="font-bold text-white/50">{getBest()}</span></p>}
 
         {currentQ && (
           <div className="mt-6 rounded-2xl border border-white/10 bg-white/[0.03] p-5 text-left mb-6">
@@ -637,7 +668,7 @@ export default function Home() {
               const loseV  = q.valueA >= q.valueB ? q.valueB  : q.valueA;
               return (
                 <>
-                  <p className="text-[10px] font-mono text-white/30 mb-3">{q.label}</p>
+                  <p className="text-xs text-white/40 font-medium mb-3">{q.label}</p>
                   <div className="flex gap-4 mb-3">
                     <div><p className="text-xs text-white/40">{winner.name}</p><p className="text-2xl font-black text-emerald-400">{formatValue(winV, q.unit)}</p></div>
                     <div><p className="text-xs text-white/40">{loser.name}</p><p className="text-2xl font-black text-red-400">{formatValue(loseV, q.unit)}</p></div>
@@ -655,7 +686,7 @@ export default function Home() {
             )}
             {currentQ.type === 'draft' && (
               <>
-                <p className="text-[10px] font-mono text-white/30 mb-3">{currentQ.data.statLabel} · {currentQ.data.season}</p>
+                <p className="text-xs text-white/40 font-medium mb-3">{currentQ.data.statLabel} · {currentQ.data.season}</p>
                 <div className="space-y-1.5">
                   {currentQ.data.players.map((p, i) => (
                     <div key={p.name} className="flex items-center justify-between">
@@ -669,13 +700,15 @@ export default function Home() {
             )}
           </div>
         )}
-        <div className="rounded-xl border border-white/8 bg-white/[0.03] px-4 py-3 mb-4">
-          <p className="text-white/30 text-xs font-mono">Streak ended. Come back tomorrow.</p>
-        </div>
+        <button onClick={() => watchAd('streak')}
+          className="w-full py-4 rounded-2xl bg-yellow-400 text-black font-black text-base hover:bg-yellow-300 transition-all active:scale-[0.98] mb-3 shadow-lg shadow-yellow-400/20">
+          📺 Watch an ad — save your streak
+        </button>
+        <p className="text-white/25 text-xs mb-6">One lifeline per day. Resets at midnight.</p>
 
         <div className="flex gap-3 justify-center">
           <button onClick={() => { setGameState('hub'); forceUpdate(n => n + 1); }}
-            className="px-6 py-3 rounded-xl border border-white/15 text-white/50 text-sm font-mono hover:text-white hover:border-white/30 transition-colors">
+            className="px-6 py-3 rounded-xl border border-white/12 text-white/40 text-sm font-medium hover:text-white/70 hover:border-white/25 transition-colors">
             Hub
           </button>
           <a href="/leaderboard"

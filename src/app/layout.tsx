@@ -22,6 +22,16 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
           src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7874759706660952"
           crossOrigin="anonymous"
         />
+        {/* H5 Games Ad Placement API — enables rewarded ad callbacks */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              window.adConfig = window.adConfig || function(o){(window.adsbygoogle=window.adsbygoogle||[]).push(o);};
+              window.adBreak  = window.adBreak  || function(o){(window.adsbygoogle=window.adsbygoogle||[]).push(o);};
+              window.adConfig({ preloadAdBreaks: 'on', sound: 'off' });
+            `,
+          }}
+        />
       </head>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <Nav />
