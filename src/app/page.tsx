@@ -311,9 +311,8 @@ export default function Home() {
 
 
   if (showModal) return (
-    <UsernameModal onSubmit={(name, email) => {
+    <UsernameModal onSubmit={(name) => {
       localStorage.setItem('ykb_username', name);
-      if (email) { localStorage.setItem('ykb_email', email); setUserEmail(email); }
       setUsername(name);
       if (fbUser) updateHandle(name);
       setShowModal(false);
