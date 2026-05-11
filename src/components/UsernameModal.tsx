@@ -26,24 +26,34 @@ const GoogleIcon = () => (
 );
 
 export default function UsernameModal({ onSubmit }: Props) {
-  const [step,     setStep]     = useState<'splash' | 'email' | 'guest'>('splash');
+  const [step,     setStep]     = useState<'splash' | 'email' | 'guest' | 'pick-handle'>('splash');
   const [mode,     setMode]     = useState<'signup' | 'login'>('signup');
   const [handle,   setHandle]   = useState('');
   const [email,    setEmail]    = useState('');
   const [password, setPassword] = useState('');
   const [loading,  setLoading]  = useState(false);
   const [error,    setError]    = useState('');
+  const [pendingUid, setPendingUid] = useState('');
 
   async function signInGoogle() {
     setLoading(true); setError('');
     try {
       const r    = await signInWithPopup(auth, googleProvider);
-      const name = (r.user.displayName || r.user.email?.split('@')[0] || 'Player').slice(0, 20);
-      await syncAndSubmit(r.user.uid, name, onSubmit);
+      const suggested = (r.user.displayName || r.user.email?.split('@')[0] || 'Player').slice(0, 20);
+      setPendingUid(r.user.uid);
+      setHandle(suggested);
+      await Promise.all(TIERS.map(t => pullFromFirestore(r.user.uid, t)));
+      setStep('pick-handle');
     } catch (e: unknown) {
       const msg = (e as { code?: string }).code;
       setError(msg === 'auth/popup-closed-by-user' ? 'Popup closed.' : 'Google sign-in failed. Try again.');
     } finally { setLoading(false); }
+  }
+
+  async function confirmHandle() {
+    const h = handle.trim();
+    if (h.length < 2) { setError('Pick a handle (2+ chars).'); return; }
+    await syncAndSubmit(pendingUid, h, onSubmit);
   }
 
   async function submitEmail() {
@@ -149,6 +159,25 @@ export default function UsernameModal({ onSubmit }: Props) {
               <button onClick={() => { setStep('splash'); setError(''); }}
                 className="text-white/20 text-xs hover:text-white/40 transition-colors">← back</button>
             </div>
+          </div>
+        )}
+
+        {/* ── PICK HANDLE (after Google sign-in) ── */}
+        {step === 'pick-handle' && (
+          <div className="space-y-5">
+            <div className="text-center">
+              <h2 className="text-2xl font-black text-white">Pick your handle</h2>
+              <p className="text-white/35 text-sm mt-1">This is how you&apos;ll appear on the leaderboard.</p>
+            </div>
+            <input type="text" value={handle} onChange={e => setHandle(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && confirmHandle()}
+              placeholder="e.g. CourtVision" maxLength={20} autoFocus
+              className="w-full bg-white/5 border border-white/12 rounded-lg px-4 py-3 text-white placeholder-white/25 text-sm focus:outline-none focus:border-white/30 transition-colors" />
+            {error && <p className="text-red-400 text-xs text-center">{error}</p>}
+            <button onClick={confirmHandle} disabled={handle.trim().length < 2}
+              className="w-full py-3 rounded-lg bg-white text-black font-bold text-sm disabled:opacity-25 hover:bg-white/90 transition-all">
+              Let&apos;s go
+            </button>
           </div>
         )}
 
