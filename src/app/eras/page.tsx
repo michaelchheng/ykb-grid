@@ -13,7 +13,7 @@ const ERA_INFO = {
     desc:   'Bad Boy Pistons. Showtime. The Triangle. Iso-Melo. Pre-analytics basketball, where post play and midrange jumpers were not yet crimes.',
     stats:  [
       { label: 'Questions',    value: String(classicQ.length) },
-      { label: 'Unhinged',     value: String(classicQ.filter(q => q.difficulty === 'unhinged').length) },
+      { label: 'Unhinged',     value: String(classicQ.filter(q => q.difficulty === 'niche').length) },
       { label: 'Avg Diff',     value: '2.8 / 4' },
     ],
     href:   '/?era=classic',
@@ -25,7 +25,7 @@ const ERA_INFO = {
     desc:   'Three-point revolution. SSOL Suns DNA everywhere. Jokic basketball. The era where everyone is a point guard and nobody plays defense voluntarily.',
     stats:  [
       { label: 'Questions',    value: String(modernQ.length) },
-      { label: 'Unhinged',     value: String(modernQ.filter(q => q.difficulty === 'unhinged').length) },
+      { label: 'Unhinged',     value: String(modernQ.filter(q => q.difficulty === 'niche').length) },
       { label: 'Avg Diff',     value: '2.5 / 4' },
     ],
     href:   '/?era=modern',
@@ -73,9 +73,9 @@ export default function ErasPage() {
         <div className="rounded-xl border border-white/8 bg-white/2 p-5">
           <h3 className="font-semibold text-sm mb-3 text-white/80">All-time difficulty breakdown</h3>
           <div className="grid grid-cols-4 gap-3">
-            {(['easy','medium','hard','unhinged'] as const).map(d => {
+            {(['easy','medium','hard','niche'] as const).map(d => {
               const n = QUESTIONS.filter(q => q.difficulty === d).length;
-              const colors: Record<string, string> = { easy: '#34d399', medium: '#fbbf24', hard: '#f97316', unhinged: '#f87171' };
+              const colors: Record<string, string> = { easy: '#34d399', medium: '#fbbf24', hard: '#f97316', niche: '#f87171' };
               return (
                 <div key={d} className="text-center">
                   <div className="text-2xl font-black" style={{ color: colors[d] }}>{n}</div>

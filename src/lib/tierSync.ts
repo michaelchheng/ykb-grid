@@ -10,7 +10,7 @@
 import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
-export type Tier4 = 'easy' | 'medium' | 'hard' | 'unhinged';
+export type Tier4 = 'easy' | 'medium' | 'hard' | 'niche';
 
 export interface TierData {
   lockout:       string | null;  // today's date string or null

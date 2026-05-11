@@ -7,7 +7,7 @@ import { pullFromFirestore, saveUsername } from '@/lib/tierSync';
 
 interface Props { onSubmit: (name: string) => void; }
 
-const TIERS = ['easy','medium','hard','unhinged'] as const;
+const TIERS = ['easy','medium','hard','niche'] as const;
 
 async function syncAndSubmit(uid: string, name: string, onSubmit: (n: string) => void) {
   localStorage.setItem('ykb_uid',      uid);

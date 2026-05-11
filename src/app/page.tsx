@@ -37,7 +37,7 @@ function getBallIQ(best: number) {
 
 // ── localStorage helpers ───────────────────────────────────────────────────────
 function todayStr() { return new Date().toISOString().split('T')[0]; }
-type Tier4 = 'easy' | 'medium' | 'hard' | 'unhinged';
+type Tier4 = 'easy' | 'medium' | 'hard' | 'niche';
 function isLockedOut(tier: Tier4 = 'easy'): boolean {
   if (typeof window === 'undefined') return false;
   return localGet(tier).lockout === todayStr();
@@ -62,7 +62,7 @@ function formatValue(value: number, unit: string): string {
 }
 
 // ── Pool builder ───────────────────────────────────────────────────────────────
-function pickQuestion(streak: number, used: Set<string>, aiExtra: Question[], tier: 'easy'|'medium'|'hard'|'unhinged' = 'easy'): AnyQ | null {
+function pickQuestion(streak: number, used: Set<string>, aiExtra: Question[], tier: 'easy'|'medium'|'hard'|'niche' = 'easy'): AnyQ | null {
   const compDiff  = tier;
   const gauntDiff = tier === 'easy' ? 'Easy' : tier === 'medium' ? 'Medium' : tier === 'hard' ? 'Hard' : 'Niche';
   const draftDiff = gauntDiff;
@@ -75,7 +75,7 @@ function pickQuestion(streak: number, used: Set<string>, aiExtra: Question[], ti
   else if (rand < draftChance + gauntletChance) qType = 'gauntlet';
 
   if (qType === 'comparison') {
-    const staticPool = getQuestionsByDifficulty(compDiff as 'easy' | 'medium' | 'hard' | 'unhinged');
+    const staticPool = getQuestionsByDifficulty(compDiff as 'easy' | 'medium' | 'hard' | 'niche');
     const aiPool     = aiExtra.filter(q => !used.has(q.id));
     const combined   = [...aiPool, ...staticPool].filter(q => !used.has(q.id));
     const pool       = combined.length > 0 ? combined : staticPool;
@@ -88,7 +88,7 @@ function pickQuestion(streak: number, used: Set<string>, aiExtra: Question[], ti
     const pool = GAUNTLET_QUESTIONS.filter(q => q.difficulty === gauntDiff && !used.has(q.id));
     const src  = pool.length > 0 ? pool : GAUNTLET_QUESTIONS.filter(q => q.difficulty === gauntDiff);
     if (src.length === 0) {
-      const staticPool = getQuestionsByDifficulty(compDiff as 'easy' | 'medium' | 'hard' | 'unhinged');
+      const staticPool = getQuestionsByDifficulty(compDiff as 'easy' | 'medium' | 'hard' | 'niche');
       const q = staticPool.filter(q => !used.has(q.id))[0] ?? staticPool[0];
       if (!q) return null;
       return { type: 'comparison', id: q.id, data: q };
@@ -101,7 +101,7 @@ function pickQuestion(streak: number, used: Set<string>, aiExtra: Question[], ti
   const pool = DRAFT_CHALLENGES.filter(c => c.difficulty === draftDiff && !used.has(c.id));
   const src  = pool.length > 0 ? pool : DRAFT_CHALLENGES.filter(c => c.difficulty === draftDiff);
   if (src.length === 0) {
-    const staticPool = getQuestionsByDifficulty(compDiff as 'easy' | 'medium' | 'hard' | 'unhinged');
+    const staticPool = getQuestionsByDifficulty(compDiff as 'easy' | 'medium' | 'hard' | 'niche');
     const q = staticPool.filter(q => !used.has(q.id))[0] ?? staticPool[0];
     if (!q) return null;
     return { type: 'comparison', id: q.id, data: q };
@@ -117,7 +117,13 @@ export default function Home() {
   const [gameState, setGameState]             = useState<GameState>('hub');
   const [streak, setStreak]                   = useState(0);
   const [currentQ, setCurrentQ]               = useState<AnyQ | null>(null);
-  const [usedIds, setUsedIds]                 = useState<Set<string>>(new Set());
+  const [usedIds, setUsedIds]                 = useState<Set<string>>(() => {
+    if (typeof window === 'undefined') return new Set();
+    try {
+      const saved = localStorage.getItem('ykb_used_easy');
+      return saved ? new Set(JSON.parse(saved) as string[]) : new Set();
+    } catch { return new Set(); }
+  });
   const [username, setUsername]               = useState<string | null>(null);
   const [userEmail, setUserEmail]             = useState<string | null>(null);
   const [showModal, setShowModal]             = useState(false);
@@ -136,7 +142,15 @@ export default function Home() {
   const [draftRemaining, setDraftRemaining]   = useState<DraftPlayer[]>([]);
   const [draftSubmitted, setDraftSubmitted]   = useState(false);
   const [draftScore, setDraftScore]           = useState(0);
-  const [selectedTier, setSelectedTier]       = useState<'easy'|'medium'|'hard'|'unhinged'>('easy');
+  const [selectedTier, setSelectedTier]       = useState<'easy'|'medium'|'hard'|'niche'>('easy');
+
+  // Reload used IDs from localStorage when tier changes
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(`ykb_used_${selectedTier}`);
+      setUsedIds(saved ? new Set(JSON.parse(saved) as string[]) : new Set());
+    } catch { setUsedIds(new Set()); }
+  }, [selectedTier]);
 
   const { submitVote, voteData, getVotes, submitScore } = useSocket();
   const { user: fbUser, loading: authLoading, signInWithGoogle, signOut, updateHandle } = useAuth();
@@ -145,7 +159,7 @@ export default function Home() {
   // Pull Firestore data for all tiers when user logs in
   useEffect(() => {
     if (!fbUser) return;
-    (['easy','medium','hard','unhinged'] as const).forEach(t => pullFromFirestore(fbUser.uid, t));
+    (['easy','medium','hard','niche'] as const).forEach(t => pullFromFirestore(fbUser.uid, t));
     if (fbUser.handle) setUsername(fbUser.handle);
     if (fbUser.email) setUserEmail(fbUser.email);
   }, [fbUser?.uid]);
@@ -302,6 +316,7 @@ export default function Home() {
     const newUsed = new Set(usedIds);
     if (currentQ?.id) newUsed.add(currentQ.id);
     setUsedIds(newUsed);
+    try { localStorage.setItem(`ykb_used_${selectedTier}`, JSON.stringify([...newUsed])); } catch { }
     const q = pickQuestion(streak, newUsed, aiBuffer, selectedTier);
     setCurrentQ(q);
     resetAnswerState(q);
@@ -395,7 +410,7 @@ export default function Home() {
               { id: 'easy',     label: 'Easy',   color: '#34d399' },
               { id: 'medium',   label: 'Medium', color: '#38bdf8' },
               { id: 'hard',     label: 'Hard',   color: '#c084fc' },
-              { id: 'unhinged', label: 'Niche',  color: '#facc15' },
+              { id: 'niche', label: 'Niche',  color: '#facc15' },
             ] as const).map(t => (
               <button key={t.id} onClick={() => setSelectedTier(t.id)}
                 className="rounded-xl border p-3 text-center transition-all"
@@ -435,7 +450,7 @@ export default function Home() {
                   { id: 'easy'     as const, label: 'Easy',   color: '#34d399' },
                   { id: 'medium'   as const, label: 'Medium', color: '#38bdf8' },
                   { id: 'hard'     as const, label: 'Hard',   color: '#c084fc' },
-                  { id: 'unhinged' as const, label: 'Niche',  color: '#facc15' },
+                  { id: 'niche' as const, label: 'Niche',  color: '#facc15' },
                 ]).map(t => {
                   const tLocked  = isLockedOut(t.id);
                   const tStreak  = getTodayStreak(t.id);

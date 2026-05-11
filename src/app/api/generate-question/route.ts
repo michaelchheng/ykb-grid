@@ -4,7 +4,7 @@ import { NextRequest } from 'next/server';
  * Context-engineered question generation:
  * 1. Pick random stat categories + seasons
  * 2. Fetch REAL player data from NBA Stats API (via /api/nba proxy)
- * 3. Pick player pairs based on difficulty (wide gap = easy, near-identical = unhinged)
+ * 3. Pick player pairs based on difficulty (wide gap = easy, near-identical = niche)
  * 4. Send real numbers to GPT — it writes flavor text ONLY, never invents stats
  *
  * Result: infinite, accurate, diverse questions seeded from actual NBA history.
@@ -158,7 +158,7 @@ function pickPair(
       idxA = Math.floor(r() * 10);
       idxB = idxA + 1 + Math.floor(r() * 4);
       break;
-    case 'unhinged':
+    case 'niche':
       idxA = 1 + Math.floor(r() * 18);
       idxB = idxA + 1;
       break;

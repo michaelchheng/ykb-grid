@@ -4,10 +4,10 @@ import { adminAuth } from '@/lib/firebase-admin';
 const FROM   = process.env.NOTIFY_FROM_EMAIL || 'YKB <noreply@youknowball.us>';
 
 const TIER_COLOR: Record<string, string> = {
-  easy: '#34d399', medium: '#38bdf8', hard: '#c084fc', unhinged: '#facc15',
+  easy: '#34d399', medium: '#38bdf8', hard: '#c084fc', niche: '#facc15',
 };
 const TIER_LABEL: Record<string, string> = {
-  easy: 'Easy', medium: 'Medium', hard: 'Hard', unhinged: 'Niche',
+  easy: 'Easy', medium: 'Medium', hard: 'Hard', niche: 'Niche',
 };
 
 export async function POST(req: NextRequest) {
