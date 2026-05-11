@@ -241,7 +241,7 @@ export default function Home() {
     setCurrentQ(q);
     resetAnswerState(q);
     setGameState('playing');
-    fetchAiQuestions('medium');
+    fetchAiQuestions(selectedTier);
   }
 
   function handleResult(correct: boolean) {

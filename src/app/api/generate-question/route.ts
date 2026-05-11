@@ -28,16 +28,28 @@ function teamColor(abbr: string): string {
 }
 
 // ── Seasons pool ───────────────────────────────────────────────────────────────
-const SEASONS = [
+const SEASONS_COMMON = [
   '2024-25', '2023-24', '2022-23', '2021-22', '2020-21',
   '2019-20', '2018-19', '2017-18', '2016-17', '2015-16',
-  '2014-15', '2013-14', '2012-13', '2011-12', '2010-11',
-  '2009-10', '2008-09', '2007-08', '2006-07', '2005-06',
-  '2004-05', '2003-04', '2002-03',
+  '2014-15', '2013-14', '2012-13',
 ];
 
-function randomSeason(): string {
-  return SEASONS[Math.floor(Math.random() * SEASONS.length)];
+// Niche uses older/random seasons to pull obscure players
+const SEASONS_NICHE = [
+  '2011-12', '2010-11', '2009-10', '2008-09', '2007-08',
+  '2006-07', '2005-06', '2004-05', '2003-04', '2002-03',
+  '2001-02', '2000-01', '1999-00', '1998-99', '1997-98',
+  '1996-97', '1995-96', '1994-95',
+];
+
+function randomSeason(difficulty: string): string {
+  if (difficulty === 'niche') {
+    // 60% chance of an old/obscure season, 40% chance modern but deep bench
+    return Math.random() < 0.6
+      ? SEASONS_NICHE[Math.floor(Math.random() * SEASONS_NICHE.length)]
+      : SEASONS_COMMON[Math.floor(Math.random() * SEASONS_COMMON.length)];
+  }
+  return SEASONS_COMMON[Math.floor(Math.random() * SEASONS_COMMON.length)];
 }
 
 // ── Stat strategies ────────────────────────────────────────────────────────────
@@ -48,27 +60,47 @@ interface StatStrategy {
   unit: string;
   category: string;
   minGames?: number;
+  nicheOnly?: boolean; // only used for niche tier
 }
 
-const STAT_STRATEGIES: StatStrategy[] = [
-  { statCategory: 'PTS',  colName: 'PTS',  label: 'Season Points',         unit: 'points',           category: 'points',             minGames: 30 },
-  { statCategory: 'AST',  colName: 'AST',  label: 'Season Assists',         unit: 'assists',          category: 'assists',            minGames: 30 },
-  { statCategory: 'REB',  colName: 'REB',  label: 'Season Rebounds',        unit: 'rebounds',         category: 'offensive_rebounds', minGames: 30 },
-  { statCategory: 'STL',  colName: 'STL',  label: 'Season Steals',          unit: 'steals',           category: 'steals',             minGames: 30 },
-  { statCategory: 'BLK',  colName: 'BLK',  label: 'Season Blocks',          unit: 'blocks',           category: 'blocks',             minGames: 30 },
-  { statCategory: 'FG3M', colName: 'FG3M', label: 'Three-Pointers Made',    unit: 'threes made',      category: 'three_point_pct',    minGames: 30 },
-  { statCategory: 'TOV',  colName: 'TOV',  label: 'Season Turnovers',       unit: 'turnovers',        category: 'turnovers',          minGames: 30 },
-  { statCategory: 'PF',   colName: 'PF',   label: 'Personal Fouls',         unit: 'personal fouls',   category: 'personal_fouls',     minGames: 30 },
-  { statCategory: 'FTA',  colName: 'FTA',  label: 'Free Throws Attempted',  unit: 'FTA',              category: 'missed_free_throws', minGames: 30 },
-  { statCategory: 'FTM',  colName: 'FTM',  label: 'Free Throws Made',       unit: 'FTM',              category: 'ft_pct',             minGames: 30 },
-  { statCategory: 'OREB', colName: 'OREB', label: 'Offensive Rebounds',     unit: 'offensive boards', category: 'offensive_rebounds', minGames: 30 },
-  { statCategory: 'DREB', colName: 'DREB', label: 'Defensive Rebounds',     unit: 'defensive boards', category: 'offensive_rebounds', minGames: 30 },
-  { statCategory: 'MIN',  colName: 'MIN',  label: 'Minutes Played',         unit: 'minutes',          category: 'games_played',       minGames: 30 },
-  { statCategory: 'FGM',  colName: 'FGM',  label: 'Field Goals Made',       unit: 'FGM',              category: 'points',             minGames: 30 },
-  { statCategory: 'FGA',  colName: 'FGA',  label: 'Field Goals Attempted',  unit: 'FGA',              category: 'points',             minGames: 30 },
-  { statCategory: 'EFF',  colName: 'EFF',  label: 'Efficiency Rating',      unit: 'efficiency',       category: 'points',             minGames: 30 },
+// Common stats — used for easy/medium/hard
+const COMMON_STRATEGIES: StatStrategy[] = [
+  { statCategory: 'PTS',  colName: 'PTS',  label: 'Season Points',         unit: 'points',           category: 'points',             minGames: 40 },
+  { statCategory: 'AST',  colName: 'AST',  label: 'Season Assists',         unit: 'assists',          category: 'assists',            minGames: 40 },
+  { statCategory: 'REB',  colName: 'REB',  label: 'Season Rebounds',        unit: 'rebounds',         category: 'offensive_rebounds', minGames: 40 },
+  { statCategory: 'STL',  colName: 'STL',  label: 'Season Steals',          unit: 'steals',           category: 'steals',             minGames: 40 },
+  { statCategory: 'BLK',  colName: 'BLK',  label: 'Season Blocks',          unit: 'blocks',           category: 'blocks',             minGames: 40 },
+  { statCategory: 'FG3M', colName: 'FG3M', label: 'Three-Pointers Made',    unit: 'threes',           category: 'three_point_pct',    minGames: 40 },
+  { statCategory: 'TOV',  colName: 'TOV',  label: 'Season Turnovers',       unit: 'turnovers',        category: 'turnovers',          minGames: 40 },
+  { statCategory: 'FTM',  colName: 'FTM',  label: 'Free Throws Made',       unit: 'FTM',              category: 'ft_pct',             minGames: 40 },
+  { statCategory: 'OREB', colName: 'OREB', label: 'Offensive Rebounds',     unit: 'offensive boards', category: 'offensive_rebounds', minGames: 40 },
+  { statCategory: 'DREB', colName: 'DREB', label: 'Defensive Rebounds',     unit: 'defensive boards', category: 'offensive_rebounds', minGames: 40 },
+  { statCategory: 'FGA',  colName: 'FGA',  label: 'Field Goals Attempted',  unit: 'FGA',              category: 'points',             minGames: 40 },
+  { statCategory: 'MIN',  colName: 'MIN',  label: 'Minutes Played',         unit: 'minutes',          category: 'games_played',       minGames: 40 },
+  { statCategory: 'EFF',  colName: 'EFF',  label: 'Efficiency Rating',      unit: 'efficiency',       category: 'points',             minGames: 40 },
   { statCategory: 'GP',   colName: 'GP',   label: 'Games Played',           unit: 'games',            category: 'games_played',       minGames: 60 },
 ];
+
+// Niche-only obscure stats — used only for niche tier to ensure weird/hard questions
+const NICHE_STRATEGIES: StatStrategy[] = [
+  { statCategory: 'PF',    colName: 'PF',    label: 'Personal Fouls',             unit: 'fouls',            category: 'personal_fouls',     minGames: 30, nicheOnly: true },
+  { statCategory: 'FTA',   colName: 'FTA',   label: 'Free Throws Attempted',      unit: 'FTA',              category: 'missed_free_throws', minGames: 30, nicheOnly: true },
+  { statCategory: 'FGM',   colName: 'FGM',   label: 'Field Goals Made',           unit: 'FGM',              category: 'points',             minGames: 30, nicheOnly: true },
+  { statCategory: 'TOV',   colName: 'TOV',   label: 'Turnovers',                  unit: 'turnovers',        category: 'turnovers',          minGames: 30, nicheOnly: true },
+  { statCategory: 'BLKA',  colName: 'BLKA',  label: 'Shots Blocked (Against)',    unit: 'shots blocked',    category: 'blocks',             minGames: 30, nicheOnly: true },
+  { statCategory: 'DD2',   colName: 'DD2',   label: 'Double-Doubles',             unit: 'double-doubles',   category: 'triple_doubles',     minGames: 20, nicheOnly: true },
+  { statCategory: 'TD3',   colName: 'TD3',   label: 'Triple-Doubles',             unit: 'triple-doubles',   category: 'triple_doubles',     minGames: 20, nicheOnly: true },
+  { statCategory: 'PTS',   colName: 'PTS',   label: 'Season Points',              unit: 'points',           category: 'points',             minGames: 20, nicheOnly: true },
+  { statCategory: 'AST',   colName: 'AST',   label: 'Season Assists',             unit: 'assists',          category: 'assists',            minGames: 20, nicheOnly: true },
+  { statCategory: 'REB',   colName: 'REB',   label: 'Season Rebounds',            unit: 'rebounds',         category: 'offensive_rebounds', minGames: 20, nicheOnly: true },
+  { statCategory: 'STL',   colName: 'STL',   label: 'Season Steals',              unit: 'steals',           category: 'steals',             minGames: 20, nicheOnly: true },
+  { statCategory: 'BLK',   colName: 'BLK',   label: 'Season Blocks',              unit: 'blocks',           category: 'blocks',             minGames: 20, nicheOnly: true },
+  { statCategory: 'FG3M',  colName: 'FG3M',  label: 'Three-Pointers Made',        unit: 'threes',           category: 'three_point_pct',    minGames: 20, nicheOnly: true },
+  { statCategory: 'OREB',  colName: 'OREB',  label: 'Offensive Boards',           unit: 'offensive boards', category: 'offensive_rebounds', minGames: 20, nicheOnly: true },
+  { statCategory: 'MIN',   colName: 'MIN',   label: 'Minutes Played',             unit: 'minutes',          category: 'games_played',       minGames: 20, nicheOnly: true },
+];
+
+const STAT_STRATEGIES = [...COMMON_STRATEGIES, ...NICHE_STRATEGIES];
 
 // ── NBA data type ──────────────────────────────────────────────────────────────
 interface NBALeaderRow {
@@ -141,25 +173,30 @@ function pickPair(
   leaders: NBALeaderRow[],
   difficulty: string,
 ): [NBALeaderRow, NBALeaderRow] | null {
-  if (leaders.length < 15) return null;
+  if (leaders.length < 10) return null;
   const r = Math.random;
   let idxA: number, idxB: number;
 
   switch (difficulty) {
     case 'easy':
+      // Top star vs very low-ranked — massive obvious gap
       idxA = Math.floor(r() * 3);
-      idxB = 15 + Math.floor(r() * 20);
+      idxB = Math.min(leaders.length - 1, 40 + Math.floor(r() * 30));
       break;
     case 'medium':
-      idxA = 2 + Math.floor(r() * 6);
-      idxB = 10 + Math.floor(r() * 15);
+      // Top 10 vs rank 20-40 — noticeable gap but not obvious
+      idxA = 2 + Math.floor(r() * 8);
+      idxB = Math.min(leaders.length - 1, 20 + Math.floor(r() * 20));
       break;
     case 'hard':
-      idxA = Math.floor(r() * 10);
-      idxB = idxA + 1 + Math.floor(r() * 4);
+      // Close to each other in the top 20 — tight race
+      idxA = Math.floor(r() * 15);
+      idxB = idxA + 1 + Math.floor(r() * 3);
       break;
     case 'niche':
-      idxA = 1 + Math.floor(r() * 18);
+      // Deep bench obscure players, near-identical stats — borderline impossible
+      // Pull from rank 15-60 (not the obvious stars) and pick adjacent
+      idxA = Math.min(leaders.length - 3, 15 + Math.floor(r() * 45));
       idxB = idxA + 1;
       break;
     default:
@@ -188,9 +225,11 @@ const SYSTEM_PROMPT = `You write flavor text for "Who Had More?" — a basketbal
 
 Your ONLY job: write a 1-2 sentence "flavor" field for each matchup. Rules:
 - Name both players and mention their exact stat values
-- Add genuine basketball context (was this a career year? a tight race? historically significant?)
-- Write in a knowledgeable fan's voice — opinionated, vivid, not bland
-- Never change any stat numbers I provide`;
+- Add genuine basketball context (was this a career year? a tight race? historically significant? obscure role player?)
+- For niche matchups with obscure players: lean into HOW obscure they are — celebrate the deep cut
+- Write in a knowledgeable, slightly snarky fan's voice — opinionated, vivid, not bland
+- Never change any stat numbers I provide
+- Do NOT say things like "Did you know" — just state it confidently`;
 
 interface MatchupData {
   strategy: StatStrategy;
@@ -221,15 +260,16 @@ export async function POST(req: NextRequest) {
   const proto = host.startsWith('localhost') ? 'http' : 'https';
   const baseUrl = `${proto}://${host}`;
 
-  // Pick `count` unique random strategies
-  const strategies = [...STAT_STRATEGIES]
-    .sort(() => Math.random() - 0.5)
-    .slice(0, count);
+  // Pick `count` unique random strategies — niche uses obscure stat pool
+  const strategyPool = difficulty === 'niche'
+    ? [...NICHE_STRATEGIES].sort(() => Math.random() - 0.5)
+    : [...COMMON_STRATEGIES].sort(() => Math.random() - 0.5);
+  const strategies = strategyPool.slice(0, count);
 
   // Fetch NBA data in parallel — each gets a random season
   const fetchResults = await Promise.allSettled(
     strategies.map(async (strategy) => {
-      const season = randomSeason();
+      const season = randomSeason(difficulty);
       const leaders = await fetchLeaders(strategy, season, baseUrl);
       const pair = pickPair(leaders, difficulty);
       if (!pair) return null;
