@@ -390,8 +390,9 @@ export default function Home() {
           </div>
 
           <div className="rounded-2xl border border-white/8 bg-white/[0.03] px-6 py-5 mb-8 text-left">
+            <p className="text-white/40 text-xs uppercase tracking-widest mb-2">/ juː · noʊ · bɔːl /</p>
             <p className="text-white/60 text-sm leading-relaxed">
-              <span className="text-white/90 font-semibold">&ldquo;You know ball&rdquo;</span> is what the generation says when someone truly gets the game. Not just the highlights — the history, the feel, the debates only real ones have. One wrong answer locks you out until tomorrow.
+              The action of knowing ball. What our generation calls it when someone possesses elite basketball knowledge — not just who won, but why it mattered. The stats, the context, the arguments only real ones can make. One wrong answer locks you out until tomorrow. Prove you know ball.
             </p>
           </div>
 
