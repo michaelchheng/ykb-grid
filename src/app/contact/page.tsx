@@ -18,6 +18,9 @@ export default function ContactPage() {
         </p>
 
         <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 text-left space-y-4 mb-8">
+          <p className="text-white/50 text-sm leading-relaxed">
+            Feel free to let me know if you like this idea, or want to help expand it.
+          </p>
           <div>
             <p className="text-[10px] text-white/30 uppercase tracking-widest mb-1">Email</p>
             <a
