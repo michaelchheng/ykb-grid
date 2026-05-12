@@ -194,9 +194,8 @@ function pickPair(
       idxB = idxA + 1 + Math.floor(r() * 3);
       break;
     case 'niche':
-      // Deep bench obscure players, near-identical stats — borderline impossible
-      // Pull from rank 15-60 (not the obvious stars) and pick adjacent
-      idxA = Math.min(leaders.length - 3, 15 + Math.floor(r() * 45));
+      // Deep bench obscure players rank 25-80, adjacent so stats are near-identical
+      idxA = Math.min(leaders.length - 3, 25 + Math.floor(r() * 55));
       idxB = idxA + 1;
       break;
     default:
@@ -226,10 +225,12 @@ const SYSTEM_PROMPT = `You write flavor text for "Who Had More?" — a basketbal
 Your ONLY job: write a 1-2 sentence "flavor" field for each matchup. Rules:
 - Name both players and mention their exact stat values
 - Add genuine basketball context (was this a career year? a tight race? historically significant? obscure role player?)
-- For niche matchups with obscure players: lean into HOW obscure they are — celebrate the deep cut
+- For NICHE matchups: the players should be deep cuts — backup guards, fringe starters, one-season wonders, old-school names. Celebrate the obscurity. Be specific about WHY this is impossible to know.
+- For niche near-identical stats: lean into the absurdity of the gap being so small
 - Write in a knowledgeable, slightly snarky fan's voice — opinionated, vivid, not bland
 - Never change any stat numbers I provide
-- Do NOT say things like "Did you know" — just state it confidently`;
+- Do NOT say things like "Did you know" — just state it confidently
+- For niche: avoid obvious stars. If a star appears in a niche matchup, compare them to an obscure player and make the comparison feel unfair`;
 
 interface MatchupData {
   strategy: StatStrategy;
