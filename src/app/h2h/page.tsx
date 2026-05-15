@@ -204,8 +204,8 @@ export default function HeadToHead() {
               className="flex-1 py-2 rounded-lg text-xs font-mono uppercase tracking-widest transition-all"
               style={{
                 background: mode === m ? 'rgba(250,204,21,0.15)' : 'rgba(255,255,255,0.04)',
-                border: `1px solid ${mode === m ? 'rgba(16,185,129,0.4)' : 'rgba(255,255,255,0.1)'}`,
-                color: mode === m ? '#10b981' : 'rgba(255,255,255,0.4)',
+                border: `1px solid ${mode === m ? 'rgba(245,158,11,0.4)' : 'rgba(255,255,255,0.1)'}`,
+                color: mode === m ? '#f59e0b' : 'rgba(255,255,255,0.4)',
               }}>
               {m === 'create' ? 'Create Room' : 'Join Room'}
             </button>
@@ -214,7 +214,7 @@ export default function HeadToHead() {
 
         {mode === 'create' ? (
           <button onClick={createRoom}
-            className="w-full py-4 rounded-xl bg-emerald-500 text-black font-black text-sm hover:bg-emerald-400 transition-colors active:scale-[0.98]">
+            className="w-full py-4 rounded-xl bg-amber-500 text-black font-black text-sm hover:bg-amber-400 transition-colors active:scale-[0.98]">
             Create Room
           </button>
         ) : (
@@ -225,10 +225,10 @@ export default function HeadToHead() {
               onKeyDown={e => e.key === 'Enter' && joinRoom()}
               placeholder="ROOM CODE"
               maxLength={4}
-              className="w-full rounded-xl border border-white/15 bg-white/[0.04] px-4 py-3 text-center text-2xl font-black font-mono tracking-[0.5em] placeholder:text-white/20 placeholder:tracking-widest outline-none focus:border-emerald-500/50"
+              className="w-full rounded-xl border border-white/15 bg-white/[0.04] px-4 py-3 text-center text-2xl font-black font-mono tracking-[0.5em] placeholder:text-white/20 placeholder:tracking-widest outline-none focus:border-amber-500/50"
             />
             <button onClick={joinRoom}
-              className="w-full py-4 rounded-xl bg-emerald-500 text-black font-black text-sm hover:bg-emerald-400 transition-colors active:scale-[0.98]">
+              className="w-full py-4 rounded-xl bg-amber-500 text-black font-black text-sm hover:bg-amber-400 transition-colors active:scale-[0.98]">
               Join
             </button>
           </div>
@@ -244,14 +244,14 @@ export default function HeadToHead() {
     <div className="min-h-screen bg-[#08080d] text-white flex flex-col items-center justify-center px-5">
       <div className="max-w-sm w-full text-center">
         <p className="text-[10px] font-mono text-white/30 uppercase tracking-[0.3em] mb-8">Waiting for opponent</p>
-        <div className="text-[5rem] font-black leading-none tracking-[0.15em] text-emerald-400 mb-6">{roomCode}</div>
+        <div className="text-[5rem] font-black leading-none tracking-[0.15em] text-amber-400 mb-6">{roomCode}</div>
         <p className="text-white/50 text-sm mb-10">Share this code with your opponent</p>
         <button onClick={() => { navigator.clipboard?.writeText(roomCode); }}
           className="px-6 py-2.5 rounded-lg border border-white/15 text-xs font-mono text-white/50 hover:text-white hover:border-white/30 transition-colors mb-8">
           Copy Code
         </button>
         <div className="flex items-center justify-center gap-2 mb-8">
-          <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+          <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
           <span className="text-white/30 text-xs font-mono">Waiting...</span>
         </div>
         <button onClick={leaveRoom} className="text-xs font-mono text-white/25 hover:text-white/50 transition-colors">Cancel</button>
@@ -267,11 +267,11 @@ export default function HeadToHead() {
         <div className="flex items-center justify-center gap-6 mb-10">
           {players.map((p, i) => (
             <div key={i} className="text-center">
-              <div className="w-14 h-14 rounded-full border-2 border-emerald-500/30 bg-emerald-500/10 flex items-center justify-center mx-auto mb-2">
+              <div className="w-14 h-14 rounded-full border-2 border-amber-500/30 bg-amber-500/10 flex items-center justify-center mx-auto mb-2">
                 <span className="text-xl font-black">{p.username[0]?.toUpperCase()}</span>
               </div>
               <p className="font-black text-sm">{p.username}</p>
-              {p.username === username && <p className="text-[10px] text-emerald-400 font-mono">YOU</p>}
+              {p.username === username && <p className="text-[10px] text-amber-400 font-mono">YOU</p>}
             </div>
           ))}
           {players.length === 2 && (
@@ -280,7 +280,7 @@ export default function HeadToHead() {
         </div>
         {isHost ? (
           <button onClick={sendNextQuestion}
-            className="px-10 py-4 rounded-xl bg-emerald-500 text-black font-black text-sm hover:bg-emerald-400 transition-colors active:scale-[0.98]">
+            className="px-10 py-4 rounded-xl bg-amber-500 text-black font-black text-sm hover:bg-amber-400 transition-colors active:scale-[0.98]">
             Start Game →
           </button>
         ) : (
@@ -302,7 +302,7 @@ export default function HeadToHead() {
           </div>
           <div className="text-center">
             <p className="text-[10px] font-mono text-white/25 uppercase tracking-widest">Round {round}/{totalRounds}</p>
-            <p className="text-lg font-black" style={{ color: timer <= 5 ? '#f87171' : '#10b981' }}>{timer}s</p>
+            <p className="text-lg font-black" style={{ color: timer <= 5 ? '#f87171' : '#f59e0b' }}>{timer}s</p>
           </div>
           <div className="text-center">
             <p className="text-xs font-mono text-white/30">{opponent?.username ?? '?'}</p>
@@ -313,7 +313,7 @@ export default function HeadToHead() {
         <div className="flex gap-1 mt-3 max-w-sm mx-auto">
           {Array.from({ length: totalRounds }).map((_, i) => (
             <div key={i} className="flex-1 h-1 rounded-full"
-              style={{ background: i < round - 1 ? '#10b981' : i === round - 1 ? 'rgba(16,185,129,0.4)' : 'rgba(255,255,255,0.08)' }} />
+              style={{ background: i < round - 1 ? '#f59e0b' : i === round - 1 ? 'rgba(245,158,11,0.4)' : 'rgba(255,255,255,0.08)' }} />
           ))}
         </div>
       </div>
@@ -321,7 +321,7 @@ export default function HeadToHead() {
       {/* Opponent status */}
       {opponentAnswered && !answered && (
         <div className="text-center pt-3">
-          <p className="text-[10px] font-mono text-emerald-400/60 uppercase tracking-widest">
+          <p className="text-[10px] font-mono text-amber-400/60 uppercase tracking-widest">
             ⚡ {opponent?.username} answered — hurry up
           </p>
         </div>
@@ -409,7 +409,7 @@ export default function HeadToHead() {
           </div>
           {!roundResult.gameOver && isHost && (
             <button onClick={sendNextQuestion}
-              className="px-10 py-3 rounded-xl bg-emerald-500 text-black font-black text-sm hover:bg-emerald-400 transition-colors">
+              className="px-10 py-3 rounded-xl bg-amber-500 text-black font-black text-sm hover:bg-amber-400 transition-colors">
               Next Round →
             </button>
           )}
@@ -440,7 +440,7 @@ export default function HeadToHead() {
           ) : (
             <>
               <p className="text-5xl mb-4">{isDraw ? '🤝' : iWon ? '🏆' : '💀'}</p>
-              <p className="text-3xl font-black mb-2" style={{ color: iWon ? '#34d399' : isDraw ? '#10b981' : '#f87171' }}>
+              <p className="text-3xl font-black mb-2" style={{ color: iWon ? '#34d399' : isDraw ? '#f59e0b' : '#f87171' }}>
                 {isDraw ? 'Draw' : iWon ? 'You Won' : 'You Lost'}
               </p>
               <div className="flex items-center justify-center gap-8 my-8">
@@ -458,7 +458,7 @@ export default function HeadToHead() {
           )}
           <div className="flex gap-3 justify-center">
             <button onClick={leaveRoom}
-              className="px-6 py-3 rounded-xl bg-emerald-500 text-black font-black text-sm hover:bg-emerald-400 transition-colors">
+              className="px-6 py-3 rounded-xl bg-amber-500 text-black font-black text-sm hover:bg-amber-400 transition-colors">
               Rematch
             </button>
             <Link href="/"

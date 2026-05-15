@@ -64,7 +64,7 @@ export default function Gauntlet() {
 
   if (!mounted || questions.length === 0) return (
     <div className="min-h-screen bg-[#08080d] flex items-center justify-center">
-      <div className="w-6 h-6 rounded-full border-2 border-emerald-500/30 border-t-emerald-500 animate-spin" />
+      <div className="w-6 h-6 rounded-full border-2 border-amber-500/30 border-t-amber-500 animate-spin" />
     </div>
   );
 
@@ -102,7 +102,7 @@ export default function Gauntlet() {
               setPicked(null);
               setPhase('playing');
             }}
-              className="px-6 py-3 rounded-xl bg-emerald-500 text-black font-black text-sm hover:bg-emerald-400 transition-colors">
+              className="px-6 py-3 rounded-xl bg-amber-500 text-black font-black text-sm hover:bg-amber-400 transition-colors">
               Play Again
             </button>
             <Link href="/" className="px-6 py-3 rounded-xl border border-white/15 text-white/50 text-sm font-mono hover:text-white hover:border-white/30 transition-colors">
@@ -122,12 +122,12 @@ export default function Gauntlet() {
       <div className="border-b border-white/[0.06] px-5 py-3 flex items-center justify-between">
         <Link href="/" className="text-white/30 hover:text-white/60 transition-colors text-xs font-mono">← Hub</Link>
         <div className="text-center">
-          <p className="text-[10px] font-mono text-emerald-400/70 uppercase tracking-widest">Career Gauntlet</p>
+          <p className="text-[10px] font-mono text-amber-400/70 uppercase tracking-widest">Career Gauntlet</p>
         </div>
         <div className="flex items-center gap-2">
           {isAdmin && !picked && (
             <button onClick={() => { pick(q.answer); setTimeout(next, 400); }}
-              className="text-[9px] font-mono text-emerald-400/60 border border-emerald-500/30 rounded px-1.5 py-0.5 hover:bg-emerald-500/10 transition-colors">
+              className="text-[9px] font-mono text-amber-400/60 border border-amber-500/30 rounded px-1.5 py-0.5 hover:bg-amber-500/10 transition-colors">
               SKIP
             </button>
           )}
@@ -139,7 +139,7 @@ export default function Gauntlet() {
       <div className="flex gap-1 px-5 pt-4">
         {Array.from({ length: ROUND_TOTAL }).map((_, i) => (
           <div key={i} className="flex-1 h-1 rounded-full"
-            style={{ background: i < qIndex ? (i < score ? '#34d399' : '#f87171') : i === qIndex ? '#10b981' : 'rgba(255,255,255,0.08)' }} />
+            style={{ background: i < qIndex ? (i < score ? '#34d399' : '#f87171') : i === qIndex ? '#f59e0b' : 'rgba(255,255,255,0.08)' }} />
         ))}
       </div>
 
@@ -213,7 +213,7 @@ export default function Gauntlet() {
                 {picked === q.answer ? '✓ Correct' : `✗ ${q.answer}`}
               </p>
               <button onClick={next}
-                className="mt-3 px-8 py-3 rounded-xl bg-emerald-500 text-black font-black text-sm hover:bg-emerald-400 transition-colors active:scale-[0.98]">
+                className="mt-3 px-8 py-3 rounded-xl bg-amber-500 text-black font-black text-sm hover:bg-amber-400 transition-colors active:scale-[0.98]">
                 {qIndex + 1 >= ROUND_TOTAL ? 'See Results' : 'Next →'}
               </button>
             </div>
