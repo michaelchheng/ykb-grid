@@ -232,6 +232,7 @@ export default function Home() {
   }, [fetchingAi]);
 
   const seenGauntletAnswers = useRef<Set<string>>(new Set());
+  const gauntletPrewarmed   = useRef(false);
 
   const fetchAiGauntlet = useCallback(async (difficulty: string) => {
     try {
@@ -248,6 +249,14 @@ export default function Home() {
         setAiGauntletBuffer(prev => [...prev, ...qs]);
       }
     } catch { /* silent */ }
+  }, []);
+
+  // Pre-warm AI gauntlet buffer on mount so first gauntlet Q is always AI-generated
+  useEffect(() => {
+    if (gauntletPrewarmed.current) return;
+    gauntletPrewarmed.current = true;
+    fetchAiGauntlet(selectedTier);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const compId = currentQ?.type === 'comparison' ? currentQ.data.id : null;
