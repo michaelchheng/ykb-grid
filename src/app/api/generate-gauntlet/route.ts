@@ -139,13 +139,23 @@ async function runStatsAgent(
 async function runSelectionAgent(
   scoredPool: ScoredPlayer[], difficulty: string, usedNames: Set<string>, apiKey: string,
 ): Promise<AgentSelection> {
+  // Non-overlapping bands — no shared score territory between tiers
   const targetRange: Record<string, [number, number]> = {
-    Easy: [55, 100], Medium: [30, 75], Hard: [15, 55], Niche: [0, 35],
+    Easy:   [72, 100], // household names — LeBron, Curry, KD tier
+    Medium: [45, 71],  // solid starters most fans know
+    Hard:   [20, 44],  // role players / deep cuts from recent eras
+    Niche:  [0,  19],  // obscure — only hardcore fans would know
   };
   const [minScore, maxScore] = targetRange[difficulty] ?? [0, 100];
   let eligible = scoredPool
     .filter(p => !usedNames.has(p.playerName) && p.identifiabilityScore >= minScore && p.identifiabilityScore <= maxScore && p.gp >= 25)
     .sort(() => Math.random() - 0.5).slice(0, 20);
+  // Fallback: widen band by ±15 before going fully open
+  if (eligible.length < 4) {
+    eligible = scoredPool
+      .filter(p => !usedNames.has(p.playerName) && p.identifiabilityScore >= Math.max(0, minScore - 15) && p.identifiabilityScore <= Math.min(100, maxScore + 15) && p.gp >= 25)
+      .sort(() => Math.random() - 0.5).slice(0, 20);
+  }
   if (eligible.length < 4) {
     eligible = scoredPool.filter(p => !usedNames.has(p.playerName) && p.gp >= 25).sort(() => Math.random() - 0.5).slice(0, 20);
   }
@@ -186,7 +196,7 @@ async function runSelectionAgent(
       tools, tool_choice: { type: 'function', function: { name: 'select_question_players' } },
       messages: [{
         role: 'user',
-        content: `SelectionAgent: Difficulty ${difficulty}.\nPick answer + distractors. Distractors must be same era, similar stat profiles.\n\nPool:\n${playerSummary}\n\nCall select_question_players.`,
+        content: `SelectionAgent: Difficulty=${difficulty} (target identifiabilityScore range ${JSON.stringify(targetRange[difficulty] ?? [0,100])}). You MUST pick an answerPlayer whose score falls within that range — do NOT pick a famous star for Hard/Niche, and do NOT pick an obscure player for Easy. Distractors must be same era, similar position and stat profile, plausible confusions.\n\nPool:\n${playerSummary}\n\nCall select_question_players.`,
       }],
     }),
     signal: AbortSignal.timeout(15000),
@@ -259,10 +269,11 @@ const TEAM_HINTS: Record<string, string> = {
 };
 
 const SEASONS_BY_DIFF: Record<string, string[]> = {
-  Easy:   ['2023-24','2022-23','2021-22','2020-21','2019-20','2018-19','2017-18','2016-17','2015-16','2014-15','2013-14','2012-13','2011-12','2010-11'],
-  Medium: ['2018-19','2017-18','2016-17','2015-16','2014-15','2013-14','2012-13','2011-12','2010-11','2009-10','2008-09'],
-  Hard:   ['2013-14','2012-13','2011-12','2010-11','2009-10','2008-09','2007-08','2006-07','2005-06','2004-05','2003-04','2002-03'],
-  Niche:  ['2007-08','2006-07','2005-06','2004-05','2003-04','2002-03','2001-02','2000-01','1999-00','1998-99','1997-98','1996-97'],
+  // Non-overlapping era pools — each tier owns its own seasons
+  Easy:   ['2023-24','2022-23','2021-22','2020-21','2019-20','2018-19','2017-18','2016-17'],
+  Medium: ['2015-16','2014-15','2013-14','2012-13','2011-12','2010-11','2009-10'],
+  Hard:   ['2008-09','2007-08','2006-07','2005-06','2004-05','2003-04','2002-03'],
+  Niche:  ['2001-02','2000-01','1999-00','1998-99','1997-98','1996-97','1995-96','1994-95'],
 };
 
 // ── Main Route ────────────────────────────────────────────────────────────────
