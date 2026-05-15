@@ -19,7 +19,7 @@ const BALL_IQ_RANKS = [
   { label: 'Hooper',              color: '#38bdf8', minStreak: 4  },
   { label: 'Film Room',           color: '#c084fc', minStreak: 10 },
   { label: 'Elite Ball Knowledge',color: '#f97316', minStreak: 18 },
-  { label: 'Niche',               color: '#facc15', minStreak: 28 },
+  { label: 'Niche',               color: '#8b5cf6', minStreak: 28 },
 ] as const;
 
 function getBallIQ(best: number) {
@@ -430,7 +430,7 @@ export default function Home() {
             <div className="rounded-2xl border border-white/8 bg-white/[0.03] px-8 pt-8 pb-6 text-center"
               style={{ boxShadow: '0 0 60px rgba(250,204,21,0.06) inset' }}>
               <h1 className="text-[clamp(2.8rem,12vw,5rem)] font-black tracking-tighter leading-[0.9] text-white mb-3">
-                Do You<br /><span style={{ color: '#facc15' }}>Know Ball?</span>
+                Do You<br /><span style={{ color: '#8b5cf6' }}>Know Ball?</span>
               </h1>
               <p className="text-white/40 text-sm font-medium mt-4">NBA stats trivia — daily knowledge challenge</p>
             </div>
@@ -464,7 +464,7 @@ export default function Home() {
             <div className="flex items-center justify-center gap-10 mb-8">
               {todayS > 0 && (
                 <div className="text-center">
-                  <p className="text-6xl font-black tabular-nums leading-none" style={{ color: '#facc15' }}>{todayS} 🔥</p>
+                  <p className="text-6xl font-black tabular-nums leading-none" style={{ color: '#8b5cf6' }}>{todayS} 🔥</p>
                   <p className="text-xs text-white/45 mt-2 font-medium">today&apos;s streak</p>
                 </div>
               )}
@@ -483,7 +483,7 @@ export default function Home() {
               { id: 'easy',     label: 'Easy',   color: '#34d399' },
               { id: 'medium',   label: 'Medium', color: '#38bdf8' },
               { id: 'hard',     label: 'Hard',   color: '#c084fc' },
-              { id: 'niche', label: 'Niche',  color: '#facc15' },
+              { id: 'niche', label: 'Niche',  color: '#8b5cf6' },
             ] as const).map(t => (
               <button key={t.id} onClick={() => setSelectedTier(t.id)}
                 className="rounded-xl border p-3 text-center transition-all"
@@ -532,7 +532,7 @@ export default function Home() {
                   { id: 'easy'     as const, label: 'Easy',   color: '#34d399' },
                   { id: 'medium'   as const, label: 'Medium', color: '#38bdf8' },
                   { id: 'hard'     as const, label: 'Hard',   color: '#c084fc' },
-                  { id: 'niche' as const, label: 'Niche',  color: '#facc15' },
+                  { id: 'niche' as const, label: 'Niche',  color: '#8b5cf6' },
                 ]).map(t => {
                   const tLocked  = isLockedOut(t.id);
                   const tStreak  = getTodayStreak(t.id);
@@ -637,7 +637,7 @@ export default function Home() {
                 <p className="text-xs font-semibold text-white/50 mb-2">Stats</p>
                 <div className="space-y-2">
                   {[
-                    { label: 'Best Streak',    value: String(best),                                              color: '#facc15' },
+                    { label: 'Best Streak',    value: String(best),                                              color: '#8b5cf6' },
                     { label: "Today's Streak", value: String(todayS),                                           color: '#34d399' },
                     { label: 'Total Answered', value: localStorage.getItem(`ykb_total_${selectedTier}`)   || '0', color: '#818cf8' },
                     { label: 'Total Correct',  value: localStorage.getItem(`ykb_correct_${selectedTier}`) || '0', color: '#38bdf8' },
@@ -705,7 +705,7 @@ export default function Home() {
     <div className="min-h-screen bg-[#08080d] text-white flex items-center justify-center px-5">
       <div className="max-w-sm w-full text-center">
         <p className="text-xs text-white/40 font-medium mb-5">Locked Until Midnight</p>
-        <p className="text-8xl font-black tabular-nums mb-2" style={{ color: '#facc15' }}>{getTodayStreak(selectedTier)}</p>
+        <p className="text-8xl font-black tabular-nums mb-2" style={{ color: '#8b5cf6' }}>{getTodayStreak(selectedTier)}</p>
         <p className="text-white/40 text-sm mb-8">your streak today</p>
 
         <div className="rounded-xl border border-white/8 bg-white/[0.03] px-4 py-3 mb-3">
@@ -725,7 +725,7 @@ export default function Home() {
     <div className="min-h-screen bg-[#08080d] text-white flex items-center justify-center px-5">
       <div className="max-w-sm w-full text-center">
         <p className="text-2xl font-black text-red-500 mb-5">You do not know ball.</p>
-        <p className="text-8xl font-black tabular-nums leading-none mb-1" style={{ color: '#facc15' }}>{streak}</p>
+        <p className="text-8xl font-black tabular-nums leading-none mb-1" style={{ color: '#8b5cf6' }}>{streak}</p>
         <p className="text-white/50 text-base font-semibold mb-1">streak ended</p>
         {getBest() > streak && <p className="text-white/30 text-sm mb-2">best ever: <span className="font-bold text-white/50">{getBest()}</span></p>}
 
@@ -836,7 +836,7 @@ export default function Home() {
               SKIP
             </button>
           )}
-          <span className="text-xl font-black tabular-nums" style={{ color: '#facc15' }}>{streak}</span>
+          <span className="text-xl font-black tabular-nums" style={{ color: '#8b5cf6' }}>{streak}</span>
           <span className="text-[10px] font-sans text-white/30">&#x1F525;</span>
         </div>
       </div>

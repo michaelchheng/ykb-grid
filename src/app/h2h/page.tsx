@@ -204,8 +204,8 @@ export default function HeadToHead() {
               className="flex-1 py-2 rounded-lg text-xs font-mono uppercase tracking-widest transition-all"
               style={{
                 background: mode === m ? 'rgba(250,204,21,0.15)' : 'rgba(255,255,255,0.04)',
-                border: `1px solid ${mode === m ? 'rgba(250,204,21,0.4)' : 'rgba(255,255,255,0.1)'}`,
-                color: mode === m ? '#facc15' : 'rgba(255,255,255,0.4)',
+                border: `1px solid ${mode === m ? 'rgba(139,92,246,0.4)' : 'rgba(255,255,255,0.1)'}`,
+                color: mode === m ? '#8b5cf6' : 'rgba(255,255,255,0.4)',
               }}>
               {m === 'create' ? 'Create Room' : 'Join Room'}
             </button>
@@ -302,7 +302,7 @@ export default function HeadToHead() {
           </div>
           <div className="text-center">
             <p className="text-[10px] font-mono text-white/25 uppercase tracking-widest">Round {round}/{totalRounds}</p>
-            <p className="text-lg font-black" style={{ color: timer <= 5 ? '#f87171' : '#facc15' }}>{timer}s</p>
+            <p className="text-lg font-black" style={{ color: timer <= 5 ? '#f87171' : '#8b5cf6' }}>{timer}s</p>
           </div>
           <div className="text-center">
             <p className="text-xs font-mono text-white/30">{opponent?.username ?? '?'}</p>
@@ -313,7 +313,7 @@ export default function HeadToHead() {
         <div className="flex gap-1 mt-3 max-w-sm mx-auto">
           {Array.from({ length: totalRounds }).map((_, i) => (
             <div key={i} className="flex-1 h-1 rounded-full"
-              style={{ background: i < round - 1 ? '#facc15' : i === round - 1 ? 'rgba(250,204,21,0.4)' : 'rgba(255,255,255,0.08)' }} />
+              style={{ background: i < round - 1 ? '#8b5cf6' : i === round - 1 ? 'rgba(139,92,246,0.4)' : 'rgba(255,255,255,0.08)' }} />
           ))}
         </div>
       </div>
@@ -440,7 +440,7 @@ export default function HeadToHead() {
           ) : (
             <>
               <p className="text-5xl mb-4">{isDraw ? '🤝' : iWon ? '🏆' : '💀'}</p>
-              <p className="text-3xl font-black mb-2" style={{ color: iWon ? '#34d399' : isDraw ? '#facc15' : '#f87171' }}>
+              <p className="text-3xl font-black mb-2" style={{ color: iWon ? '#34d399' : isDraw ? '#8b5cf6' : '#f87171' }}>
                 {isDraw ? 'Draw' : iWon ? 'You Won' : 'You Lost'}
               </p>
               <div className="flex items-center justify-center gap-8 my-8">

@@ -139,7 +139,7 @@ export default function Gauntlet() {
       <div className="flex gap-1 px-5 pt-4">
         {Array.from({ length: ROUND_TOTAL }).map((_, i) => (
           <div key={i} className="flex-1 h-1 rounded-full"
-            style={{ background: i < qIndex ? (i < score ? '#34d399' : '#f87171') : i === qIndex ? '#facc15' : 'rgba(255,255,255,0.08)' }} />
+            style={{ background: i < qIndex ? (i < score ? '#34d399' : '#f87171') : i === qIndex ? '#8b5cf6' : 'rgba(255,255,255,0.08)' }} />
         ))}
       </div>
 

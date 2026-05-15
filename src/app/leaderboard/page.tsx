@@ -12,7 +12,7 @@ function ballIQ(e: Entry): { label: string; color: string } {
   const g = (key: string): TierStats => e.tiers[key] ?? { bestStreak: 0, totalCorrect: 0, totalAnswered: 0 };
   const acc = (s: TierStats) => s.totalAnswered > 0 ? s.totalCorrect / s.totalAnswered : 0;
   const nicheAcc = acc(g('niche')), hardAcc = acc(g('hard')), medAcc = acc(g('medium')), easyAcc = acc(g('easy'));
-  if (nicheAcc >= 0.6)                         return { label: 'Niche',               color: '#facc15' };
+  if (nicheAcc >= 0.6)                         return { label: 'Niche',               color: '#8b5cf6' };
   if (hardAcc  >= 0.75 && medAcc >= 0.7)       return { label: 'Elite Ball Knowledge', color: '#f97316' };
   if (hardAcc  >= 0.5  || medAcc >= 0.7)       return { label: 'Film Room',            color: '#c084fc' };
   if (medAcc   >= 0.5  || easyAcc >= 0.7)      return { label: 'Hooper',               color: '#38bdf8' };
@@ -158,7 +158,7 @@ export default function LeaderboardPage() {
           <p className="text-[11px] text-white/50 uppercase tracking-widest mb-4">Ball IQ Ranks</p>
           <div className="grid grid-cols-2 gap-y-2.5 gap-x-4">
             {[
-              { label: 'Niche',               color: '#facc15', desc: '60%+ niche accuracy'          },
+              { label: 'Niche',               color: '#8b5cf6', desc: '60%+ niche accuracy'          },
               { label: 'Elite Ball Knowledge', color: '#f97316', desc: '75% hard + 70% medium'       },
               { label: 'Film Room',            color: '#c084fc', desc: '50%+ hard or 70%+ medium'    },
               { label: 'Hooper',               color: '#38bdf8', desc: 'Getting there — keep playing' },

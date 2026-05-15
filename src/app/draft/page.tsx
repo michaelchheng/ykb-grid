@@ -141,7 +141,7 @@ export default function DraftOrder() {
       <div className="flex gap-1 px-5 pt-4">
         {Array.from({ length: ROUND_TOTAL }).map((_, i) => (
           <div key={i} className="flex-1 h-1 rounded-full"
-            style={{ background: i < cIndex ? '#34d399' : i === cIndex ? '#facc15' : 'rgba(255,255,255,0.08)' }} />
+            style={{ background: i < cIndex ? '#34d399' : i === cIndex ? '#8b5cf6' : 'rgba(255,255,255,0.08)' }} />
         ))}
       </div>
 
