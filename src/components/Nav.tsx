@@ -47,7 +47,7 @@ export default function Nav() {
         ))}
         <div className="flex-1" />
         {isAdmin && (
-          <span className="text-[9px] font-sans text-violet-400/60 border border-violet-500/30 rounded px-1.5 py-0.5">
+          <span className="text-[9px] font-sans text-emerald-400/60 border border-emerald-500/30 rounded px-1.5 py-0.5">
             ADMIN
           </span>
         )}

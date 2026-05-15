@@ -127,7 +127,7 @@ export default function UsernameModal({ onSubmit }: Props) {
         {step === 'splash' && (
           <div className="space-y-8">
             <h1 className="text-[clamp(3rem,12vw,5rem)] font-black tracking-tighter leading-none text-white">
-              Do You Know<br /><span style={{ color: '#8b5cf6' }}>Ball?</span>
+              Do You Know<br /><span style={{ color: '#10b981' }}>Ball?</span>
             </h1>
             <div className="flex flex-col gap-3">
               <button onClick={signInGoogle} disabled={loading}
@@ -183,7 +183,7 @@ export default function UsernameModal({ onSubmit }: Props) {
               <p className="text-white/30 text-xs">
                 {mode === 'signup' ? 'Already have an account?' : "Don't have one?"}{' '}
                 <button onClick={() => { setMode(mode === 'signup' ? 'login' : 'signup'); setError(''); }}
-                  className="text-violet-400 hover:text-violet-300 underline">
+                  className="text-emerald-400 hover:text-emerald-300 underline">
                   {mode === 'signup' ? 'Log in' : 'Sign up'}
                 </button>
               </p>
