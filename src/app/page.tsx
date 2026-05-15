@@ -136,6 +136,7 @@ export default function Home() {
 
   const [answered, setAnswered]               = useState<'A' | 'B' | null>(null);
   const [gauntletPick, setGauntletPick]       = useState<string | null>(null);
+  const gauntletQuestionStartMs               = useRef<number>(Date.now());
   const [draftRanking, setDraftRanking]       = useState<DraftPlayer[]>([]);
   const [draftRemaining, setDraftRemaining]   = useState<DraftPlayer[]>([]);
   const [draftSubmitted, setDraftSubmitted]   = useState(false);
@@ -326,7 +327,21 @@ export default function Home() {
   function pickGauntlet(option: string) {
     if (gauntletPick || !currentQ || currentQ.type !== 'gauntlet') return;
     setGauntletPick(option);
-    handleResult(option === currentQ.data.answer);
+    const correct = option === currentQ.data.answer;
+    handleResult(correct);
+    // Fire-and-forget feedback
+    fetch('/api/gauntlet-feedback', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        questionId: currentQ.id,
+        answer: option,
+        correct,
+        timeToAnswerMs: Date.now() - gauntletQuestionStartMs.current,
+        difficulty: selectedTier,
+        identifiabilityScore: (currentQ.data as { identifiabilityScore?: number }).identifiabilityScore ?? null,
+      }),
+    }).catch(() => {});
   }
 
   function draftPick(player: DraftPlayer) {
@@ -361,6 +376,7 @@ export default function Home() {
     const q = pickQuestion(streak, newUsed, aiBuffer, selectedTier, aiGauntletBuffer);
     setCurrentQ(q);
     resetAnswerState(q);
+    if (q?.type === 'gauntlet') gauntletQuestionStartMs.current = Date.now();
     setGameState('playing');
     if (aiBuffer.length < 3) fetchAiQuestions(selectedTier);
     if (aiGauntletBuffer.length < 6) fetchAiGauntlet(selectedTier);

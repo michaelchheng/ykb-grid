@@ -1,26 +1,43 @@
 /**
  * Multi-Agent Gauntlet Question Generator
  *
- * Pipeline — five agents in sequence:
+ * Pipeline — five agents + observability + resilience:
  *
- *  1. Data Fetch     — pulls real NBA per-game stats from leagueLeaders API
- *  1.5 BaselineAgent — pure math (no LLM): computes normalized euclidean stat
- *                      distances across ALL fetched seasons combined, finds each
- *                      player's nearest statistical twins, annotates each player
- *                      with a twinCount + closestTwin so StatsAgent has real
- *                      comparison evidence rather than guessing from names.
- *  2. StatsAgent     — scores stat distinctiveness using BaselineAgent context
- *  3. SelectionAgent — picks answer + distractors, filtered by difficulty band
- *  4. WriterAgent    — writes flavor text without seeing distractors
- *  5. QualityCheckAgent — hard + LLM validation before any question reaches client
+ *  1. Data Fetch      — pulls real NBA per-game stats from leagueLeaders API
+ *  1.5 BaselineAgent  — pure math: normalized euclidean distances across all
+ *                       fetched seasons, annotates each player with twinCount
+ *                       + closestTwin so StatsAgent scores with real evidence
+ *  2. StatsAgent      — scores stat distinctiveness using BaselineAgent context
+ *  3. SelectionAgent  — picks answer + distractors, filtered by difficulty band
+ *  4. WriterAgent     — writes flavor text without seeing distractors
+ *  5. QualityCheckAgent — hard + LLM validation before any question hits cache
  *
- * Demonstrates: task decomposition, tool calling, inter-agent context passing,
- * pure-math pre-processing feeding LLM agents, and observability via _rationale.
+ *  Cross-cutting:
+ *  - withRetry()     — exponential backoff on every agent fetch call
+ *  - Token/cost tracking — every OpenAI call logs usage, summed per pipeline run
+ *  - Observability   — full pipeline trace (timings, tokens, cost, QC rate)
+ *                       written to Firestore agentLogs/{requestId}
  */
 
 import { NextRequest } from 'next/server';
+import { initializeApp, getApps, cert } from 'firebase-admin/app';
+import { getFirestore } from 'firebase-admin/firestore';
 
 export const dynamic = 'force-dynamic';
+
+// ── Firebase Admin (server-side Firestore writes) ─────────────────────────────
+function getAdminDb() {
+  if (!getApps().length) {
+    initializeApp({
+      credential: cert({
+        projectId:   process.env.FIREBASE_PROJECT_ID,
+        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+        privateKey:  process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+      }),
+    });
+  }
+  return getFirestore();
+}
 
 // ── In-memory cache (server-instance scoped) ──────────────────────────────────
 const gCache     = new Map<string, object[]>();
@@ -45,10 +62,60 @@ interface AgentFlavor {
   positionHint: string;
 }
 interface BaselinePlayer extends RawPlayer {
-  twinCount: number;       // how many players in the full cross-season pool are within distance threshold
-  closestTwinName: string; // name of the single most statistically similar player
-  closestTwinDist: number; // normalized euclidean distance to that twin (0=identical, 1=very different)
+  twinCount: number;
+  closestTwinName: string;
+  closestTwinDist: number;
   season: string;
+}
+interface TokenUsage {
+  promptTokens: number;
+  completionTokens: number;
+  totalTokens: number;
+  estimatedCostUsd: number; // gpt-4o: $2.50/1M in, $10/1M out; gpt-4o-mini: $0.15/$0.60
+}
+interface AgentTiming {
+  agentName: string;
+  durationMs: number;
+  tokens?: TokenUsage;
+}
+
+// ── Resilience: exponential backoff retry wrapper ─────────────────────────────
+async function withRetry<T>(
+  fn: () => Promise<T>,
+  maxAttempts = 3,
+  label = 'agent',
+): Promise<T> {
+  let lastErr: unknown;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      return await fn();
+    } catch (e) {
+      lastErr = e;
+      if (attempt < maxAttempts) {
+        const delay = 300 * 2 ** (attempt - 1); // 300ms, 600ms, 1200ms
+        console.warn(`${label} attempt ${attempt} failed, retrying in ${delay}ms:`, e);
+        await new Promise(r => setTimeout(r, delay));
+      }
+    }
+  }
+  throw lastErr;
+}
+
+// ── Cost calculation ──────────────────────────────────────────────────────────
+function calcCost(model: string, promptTokens: number, completionTokens: number): number {
+  // Prices per 1M tokens (May 2026 rates)
+  const rates: Record<string, [number, number]> = {
+    'gpt-4o':      [2.50, 10.00],
+    'gpt-4o-mini': [0.15,  0.60],
+  };
+  const [inRate, outRate] = rates[model] ?? [2.50, 10.00];
+  return (promptTokens / 1_000_000) * inRate + (completionTokens / 1_000_000) * outRate;
+}
+
+function extractUsage(data: { usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number } }, model: string): TokenUsage {
+  const p = data.usage?.prompt_tokens ?? 0;
+  const c = data.usage?.completion_tokens ?? 0;
+  return { promptTokens: p, completionTokens: c, totalTokens: p + c, estimatedCostUsd: calcCost(model, p, c) };
 }
 
 // ── Phase 1.5: BaselineAgent (pure math — no LLM) ─────────────────────────────
@@ -142,13 +209,10 @@ async function fetchPlayerSeasonStats(season: string, baseUrl: string): Promise<
 }
 
 // ── Agent 2: StatsAgent ────────────────────────────────────────────────────────
-// Scores each player's STAT DISTINCTIVENESS using BaselineAgent context.
-// The model knows exactly how many statistical twins each player has — so scoring
-// is grounded in real comparisons, not guesses.
 async function runStatsAgent(
   players: RawPlayer[], season: string, difficulty: string, apiKey: string,
   baselineLookup: Map<string, BaselinePlayer>,
-): Promise<ScoredPlayer[]> {
+): Promise<{ scored: ScoredPlayer[]; usage: TokenUsage }> {
   const tools = [{
     type: 'function' as const,
     function: {
@@ -177,7 +241,6 @@ async function runStatsAgent(
     },
   }];
 
-  // Include full stat line + baseline twin data so model scores with real evidence
   const playerList = players.slice(0, 50).map(p => {
     const b = baselineLookup.get(p.playerName);
     const twinNote = b
@@ -186,26 +249,32 @@ async function runStatsAgent(
     return `${p.playerName}: ${p.ppg}pts/${p.rpg}reb/${p.apg}ast/${p.spg}stl/${p.bpg}blk, ${p.gp}GP, rank #${p.rank} ${twinNote}`;
   }).join('\n');
 
-  const res = await fetch('https://api.openai.com/v1/chat/completions', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
-    body: JSON.stringify({
-      model: 'gpt-4o', temperature: 0.2, max_tokens: 2500,
-      tools, tool_choice: { type: 'function', function: { name: 'score_players' } },
-      messages: [{
-        role: 'user',
-        content: `StatsAgent: Season ${season}.\nScore each player's STAT DISTINCTIVENESS using the baseline comparison data provided. Each player has a twin count (how many players in the full pool have nearly identical stats) and a closest twin distance.\n\n0 twins + high distance = extreme outlier = score 90+\nMany twins + low distance = generic, hard to identify = score <20\n\nBase your score ONLY on stat uniqueness, NOT name recognition.\n\n${playerList}\n\nCall score_players.`,
-      }],
-    }),
-    signal: AbortSignal.timeout(20000),
-  });
-  if (!res.ok) throw new Error(`StatsAgent ${res.status}`);
-  const data = await res.json();
+  const data = await withRetry(async () => {
+    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+      body: JSON.stringify({
+        model: 'gpt-4o', temperature: 0.2, max_tokens: 2500,
+        tools, tool_choice: { type: 'function', function: { name: 'score_players' } },
+        messages: [{
+          role: 'user',
+          content: `StatsAgent: Season ${season}.\nScore each player's STAT DISTINCTIVENESS using the baseline comparison data provided. Each player has a twin count (how many players in the full pool have nearly identical stats) and a closest twin distance.\n\n0 twins + high distance = extreme outlier = score 90+\nMany twins + low distance = generic, hard to identify = score <20\n\nBase your score ONLY on stat uniqueness, NOT name recognition.\n\n${playerList}\n\nCall score_players.`,
+        }],
+      }),
+      signal: AbortSignal.timeout(20000),
+    });
+    if (!res.ok) throw new Error(`StatsAgent ${res.status}`);
+    return res.json();
+  }, 3, 'StatsAgent');
+
   const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
   if (!toolCall) throw new Error('StatsAgent: no tool call');
   const { scores } = JSON.parse(toolCall.function.arguments) as { scores: { playerName: string; identifiabilityScore: number }[] };
-  const scoreMap = new Map(scores.map(s => [s.playerName, s.identifiabilityScore]));
-  return players.map(p => ({ ...p, era: season.slice(0, 4), identifiabilityScore: scoreMap.get(p.playerName) ?? 50 }));
+  const scoreMap = new Map(scores.map((s: { playerName: string; identifiabilityScore: number }) => [s.playerName, s.identifiabilityScore]));
+  return {
+    scored: players.map(p => ({ ...p, era: season.slice(0, 4), identifiabilityScore: scoreMap.get(p.playerName) ?? 50 })),
+    usage: extractUsage(data, 'gpt-4o'),
+  };
 }
 
 // ── Agent 2: SelectionAgent ────────────────────────────────────────────────────
@@ -213,7 +282,7 @@ async function runStatsAgent(
 // The model must reason about era, stat similarity, and position alignment.
 async function runSelectionAgent(
   scoredPool: ScoredPlayer[], difficulty: string, usedNames: Set<string>, apiKey: string,
-): Promise<AgentSelection> {
+): Promise<{ selection: AgentSelection; usage: TokenUsage }> {
   // Stat-disparity bands: Easy = very distinctive outlier stats, Niche = generic blends-in stats
   const targetRange: Record<string, [number, number]> = {
     Easy:   [72, 100], // extreme outlier stat lines — obvious who it is from numbers alone
@@ -263,31 +332,33 @@ async function runSelectionAgent(
     `${p.playerName} — ${p.ppg}pts/${p.rpg}reb/${p.apg}ast, ${p.team}, identifiability:${p.identifiabilityScore}`
   ).join('\n');
 
-  const res = await fetch('https://api.openai.com/v1/chat/completions', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
-    body: JSON.stringify({
-      model: 'gpt-4o', temperature: 0.7, max_tokens: 500,
-      tools, tool_choice: { type: 'function', function: { name: 'select_question_players' } },
-      messages: [{
-        role: 'user',
-        content: `SelectionAgent: Difficulty=${difficulty} (stat-distinctiveness range ${JSON.stringify(targetRange[difficulty] ?? [0,100])}). Pick an answerPlayer whose stat line is appropriately distinctive for this difficulty — Easy means very unique outlier numbers, Niche means generic stats that could belong to many players. Distractors must have SIMILAR stat profiles to the answer (same position, similar ppg/rpg/apg range) so the question is actually hard.\n\nPool:\n${playerSummary}\n\nCall select_question_players.`,
-      }],
-    }),
-    signal: AbortSignal.timeout(15000),
-  });
-  if (!res.ok) throw new Error(`SelectionAgent ${res.status}`);
-  const data = await res.json();
+  const data = await withRetry(async () => {
+    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+      body: JSON.stringify({
+        model: 'gpt-4o', temperature: 0.7, max_tokens: 500,
+        tools, tool_choice: { type: 'function', function: { name: 'select_question_players' } },
+        messages: [{
+          role: 'user',
+          content: `SelectionAgent: Difficulty=${difficulty} (stat-distinctiveness range ${JSON.stringify(targetRange[difficulty] ?? [0,100])}). Pick an answerPlayer whose stat line is appropriately distinctive for this difficulty — Easy means very unique outlier numbers, Niche means generic stats that could belong to many players. Distractors must have SIMILAR stat profiles to the answer (same position, similar ppg/rpg/apg range) so the question is actually hard.\n\nPool:\n${playerSummary}\n\nCall select_question_players.`,
+        }],
+      }),
+      signal: AbortSignal.timeout(15000),
+    });
+    if (!res.ok) throw new Error(`SelectionAgent ${res.status}`);
+    return res.json();
+  }, 3, 'SelectionAgent');
   const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
   if (!toolCall) throw new Error('SelectionAgent: no tool call');
-  return JSON.parse(toolCall.function.arguments) as AgentSelection;
+  return { selection: JSON.parse(toolCall.function.arguments) as AgentSelection, usage: extractUsage(data, 'gpt-4o') };
 }
 
 // ── Agent 3: WriterAgent ───────────────────────────────────────────────────────
 // Only sees the answer player's stats — writes flavor without knowing the distractors.
 async function runWriterAgent(
   player: RawPlayer, season: string, teamHint: string, apiKey: string,
-): Promise<AgentFlavor> {
+): Promise<{ flavor: AgentFlavor; usage: TokenUsage }> {
   const tools = [{
     type: 'function' as const,
     function: {
@@ -310,24 +381,26 @@ async function runWriterAgent(
     },
   }];
 
-  const res = await fetch('https://api.openai.com/v1/chat/completions', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
-    body: JSON.stringify({
-      model: 'gpt-4o', temperature: 0.85, max_tokens: 300,
-      tools, tool_choice: { type: 'function', function: { name: 'write_question_flavor' } },
-      messages: [{
-        role: 'user',
-        content: `WriterAgent: ${season} season, ${teamHint}.\nStats: ${player.ppg}pts, ${player.rpg}reb, ${player.apg}ast, ${player.spg}stl, ${player.bpg}blk, ${player.gp}GP.\nWrite flavor text hinting at who this player is WITHOUT naming them. Call write_question_flavor.`,
-      }],
-    }),
-    signal: AbortSignal.timeout(12000),
-  });
-  if (!res.ok) throw new Error(`WriterAgent ${res.status}`);
-  const data = await res.json();
+  const data = await withRetry(async () => {
+    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+      body: JSON.stringify({
+        model: 'gpt-4o', temperature: 0.85, max_tokens: 300,
+        tools, tool_choice: { type: 'function', function: { name: 'write_question_flavor' } },
+        messages: [{
+          role: 'user',
+          content: `WriterAgent: ${season} season, ${teamHint}.\nStats: ${player.ppg}pts, ${player.rpg}reb, ${player.apg}ast, ${player.spg}stl, ${player.bpg}blk, ${player.gp}GP.\nWrite flavor text hinting at who this player is WITHOUT naming them. Call write_question_flavor.`,
+        }],
+      }),
+      signal: AbortSignal.timeout(12000),
+    });
+    if (!res.ok) throw new Error(`WriterAgent ${res.status}`);
+    return res.json();
+  }, 3, 'WriterAgent');
   const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
   if (!toolCall) throw new Error('WriterAgent: no tool call');
-  return JSON.parse(toolCall.function.arguments) as AgentFlavor;
+  return { flavor: JSON.parse(toolCall.function.arguments) as AgentFlavor, usage: extractUsage(data, 'gpt-4o') };
 }
 
 // ── Agent 4: QualityCheckAgent ────────────────────────────────────────────────
@@ -337,6 +410,7 @@ async function runWriterAgent(
 interface QCResult {
   pass: boolean;
   failReason?: string;
+  usage?: TokenUsage | null;
 }
 interface RawQuestion {
   id: string; answer: string; options: string[]; flavor: string;
@@ -385,24 +459,27 @@ async function runQualityCheckAgent(
     },
   }];
 
-  const res = await fetch('https://api.openai.com/v1/chat/completions', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
-    body: JSON.stringify({
-      model: 'gpt-4o-mini', temperature: 0, max_tokens: 150,
-      tools, tool_choice: { type: 'function', function: { name: 'quality_check' } },
-      messages: [{
-        role: 'user',
-        content: `QualityCheckAgent: Validate this trivia question.\n\nFlavor: "${question.flavor}"\nAnswer: ${question.answer}\nOptions: ${question.options.join(', ')}\nStats: ${question.ppg}pts/${question.rpg}reb/${question.apg}ast\n\nFail if ANY of these are true:\n1. The flavor text names or strongly implies the answer player by name\n2. Any distractor is obviously wrong (e.g., wrong sport, fictional person, same name as answer)\n3. The flavor text is generic filler with no real stat info\n4. Options list fewer than 4 names\n\nCall quality_check.`,
-      }],
-    }),
-    signal: AbortSignal.timeout(8000),
-  });
-  if (!res.ok) return { pass: true }; // don't block on QC API failure
-  const data = await res.json();
+  const data = await withRetry(async () => {
+    const res = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini', temperature: 0, max_tokens: 150,
+        tools, tool_choice: { type: 'function', function: { name: 'quality_check' } },
+        messages: [{
+          role: 'user',
+          content: `QualityCheckAgent: Validate this trivia question.\n\nFlavor: "${question.flavor}"\nAnswer: ${question.answer}\nOptions: ${question.options.join(', ')}\nStats: ${question.ppg}pts/${question.rpg}reb/${question.apg}ast\n\nFail if ANY of these are true:\n1. The flavor text names or strongly implies the answer player by name\n2. Any distractor is obviously wrong (e.g., wrong sport, fictional person, same name as answer)\n3. The flavor text is generic filler with no real stat info\n4. Options list fewer than 4 names\n\nCall quality_check.`,
+        }],
+      }),
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!res.ok) throw new Error(`QCAgent ${res.status}`);
+    return res.json();
+  }, 2, 'QualityCheckAgent').catch(() => null);
+  if (!data) return { pass: true, usage: null };
   const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
-  if (!toolCall) return { pass: true };
-  return JSON.parse(toolCall.function.arguments) as QCResult;
+  if (!toolCall) return { pass: true, usage: null };
+  return { ...(JSON.parse(toolCall.function.arguments) as QCResult), usage: extractUsage(data, 'gpt-4o-mini') };
 }
 
 
@@ -470,22 +547,40 @@ export async function POST(req: NextRequest) {
     );
 
     // Phase 2: StatsAgent scores all seasons in parallel (now receives baseline context)
+    const requestId = crypto.randomUUID();
+    const pipelineTimings: AgentTiming[] = [];
+    let totalCostUsd = 0;
+    let qcRejections = 0;
+
     const scoredSeasonData = await Promise.all(
-      rawSeasonData.map(({ season, players }) =>
-        runStatsAgent(players, season, difficulty, apiKey, baselineLookup)
-          .then(scored => ({ season, scored }))
-          .catch(() => ({ season, scored: players.map(p => ({ ...p, era: season.slice(0, 4), identifiabilityScore: 50 })) }))
-      )
+      rawSeasonData.map(({ season, players }) => {
+        const t0 = Date.now();
+        return runStatsAgent(players, season, difficulty, apiKey, baselineLookup)
+          .then(({ scored, usage }) => {
+            pipelineTimings.push({ agentName: `StatsAgent:${season}`, durationMs: Date.now() - t0, tokens: usage });
+            totalCostUsd += usage.estimatedCostUsd;
+            return { season, scored };
+          })
+          .catch(() => ({ season, scored: players.map(p => ({ ...p, era: season.slice(0, 4), identifiabilityScore: 50 })) }));
+      })
     );
 
     // Phase 3 + 4 + 5: SelectionAgent → WriterAgent → QualityCheckAgent per season
     const batchSeenAnswers = new Set<string>(seenAnswers as string[]);
     const questionResults = await Promise.allSettled(
       scoredSeasonData.map(async ({ season, scored }) => {
-        const selection = await runSelectionAgent(scored, difficulty, usedNames, apiKey);
+        const t1 = Date.now();
+        const { selection, usage: selUsage } = await runSelectionAgent(scored, difficulty, usedNames, apiKey);
+        pipelineTimings.push({ agentName: `SelectionAgent:${season}`, durationMs: Date.now() - t1, tokens: selUsage });
+        totalCostUsd += selUsage.estimatedCostUsd;
+
         const answerStats = scored.find(p => p.playerName === selection.answerPlayer) ?? scored[0];
         const teamHint = TEAM_HINTS[answerStats.team] ?? answerStats.team;
-        const flavor = await runWriterAgent(answerStats, season, teamHint, apiKey);
+
+        const t2 = Date.now();
+        const { flavor, usage: writerUsage } = await runWriterAgent(answerStats, season, teamHint, apiKey);
+        pipelineTimings.push({ agentName: `WriterAgent:${season}`, durationMs: Date.now() - t2, tokens: writerUsage });
+        totalCostUsd += writerUsage.estimatedCostUsd;
 
         const options = [selection.answerPlayer, ...selection.distractors]
           .sort(() => Math.random() - 0.5) as [string, string, string, string];
@@ -504,8 +599,14 @@ export async function POST(req: NextRequest) {
         };
 
         // Phase 5: QualityCheckAgent — validate before allowing into the batch
+        const t3 = Date.now();
         const qc = await runQualityCheckAgent(question, batchSeenAnswers, apiKey);
+        if (qc.usage) {
+          pipelineTimings.push({ agentName: `QCAgent:${season}`, durationMs: Date.now() - t3, tokens: qc.usage });
+          totalCostUsd += qc.usage.estimatedCostUsd;
+        }
         if (!qc.pass) {
+          qcRejections++;
           console.warn(`QC rejected question (${question.answer}): ${qc.failReason}`);
           throw new Error(`QC failed: ${qc.failReason}`);
         }
@@ -523,6 +624,13 @@ export async function POST(req: NextRequest) {
     if (questions.length === 0) {
       return Response.json({ questions: [], error: 'All agent pipelines failed' });
     }
+
+    // Observability: write pipeline trace to Firestore (non-blocking, best-effort)
+    getAdminDb().collection('agentLogs').doc(requestId).set({
+      requestId, difficulty, timestamp: new Date().toISOString(),
+      questionsGenerated: questions.length, qcRejections, totalCostUsd,
+      agentTimings: pipelineTimings,
+    }).catch(err => console.warn('agentLogs write failed:', err));
 
     const existing = gCache.get(cacheKey) ?? [];
     gCache.set(cacheKey, [...existing, ...questions]);
