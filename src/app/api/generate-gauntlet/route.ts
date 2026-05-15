@@ -258,7 +258,82 @@ async function runWriterAgent(
   return JSON.parse(toolCall.function.arguments) as AgentFlavor;
 }
 
-// ── Config ────────────────────────────────────────────────────────────────────
+// ── Agent 4: QualityCheckAgent ────────────────────────────────────────────────
+// Fast gpt-4o-mini validation pass before any question reaches the client.
+// Checks: answer is in options, flavor doesn't name the player, distractors are
+// plausible (not obviously wrong), no duplicate answers in the batch.
+interface QCResult {
+  pass: boolean;
+  failReason?: string;
+}
+interface RawQuestion {
+  id: string; answer: string; options: string[]; flavor: string;
+  ppg: number; rpg: number; apg: number; spg: number; bpg: number;
+  season: string; positionHint: string; teamHint: string; difficulty: string;
+  _rationale: string; _source: string; conference: string;
+}
+
+async function runQualityCheckAgent(
+  question: RawQuestion, seenAnswers: Set<string>, apiKey: string,
+): Promise<QCResult> {
+  // Hard checks (no LLM needed) — fast-fail before wasting a token
+  if (!question.options.includes(question.answer)) {
+    return { pass: false, failReason: 'answer not in options' };
+  }
+  if (seenAnswers.has(question.answer)) {
+    return { pass: false, failReason: `duplicate answer: ${question.answer}` };
+  }
+  if (new Set(question.options).size !== question.options.length) {
+    return { pass: false, failReason: 'duplicate options' };
+  }
+  if (question.options.length !== 4) {
+    return { pass: false, failReason: `wrong option count: ${question.options.length}` };
+  }
+
+  // Soft checks via LLM — checks flavor quality and distractor plausibility
+  const tools = [{
+    type: 'function' as const,
+    function: {
+      name: 'quality_check',
+      description: 'Validate a trivia question for quality.',
+      parameters: {
+        type: 'object',
+        properties: {
+          pass: {
+            type: 'boolean',
+            description: 'true if the question passes all checks.',
+          },
+          failReason: {
+            type: 'string',
+            description: 'If pass=false, brief reason why it failed.',
+          },
+        },
+        required: ['pass'],
+      },
+    },
+  }];
+
+  const res = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+    body: JSON.stringify({
+      model: 'gpt-4o-mini', temperature: 0, max_tokens: 150,
+      tools, tool_choice: { type: 'function', function: { name: 'quality_check' } },
+      messages: [{
+        role: 'user',
+        content: `QualityCheckAgent: Validate this trivia question.\n\nFlavor: "${question.flavor}"\nAnswer: ${question.answer}\nOptions: ${question.options.join(', ')}\nStats: ${question.ppg}pts/${question.rpg}reb/${question.apg}ast\n\nFail if ANY of these are true:\n1. The flavor text names or strongly implies the answer player by name\n2. Any distractor is obviously wrong (e.g., wrong sport, fictional person, same name as answer)\n3. The flavor text is generic filler with no real stat info\n4. Options list fewer than 4 names\n\nCall quality_check.`,
+      }],
+    }),
+    signal: AbortSignal.timeout(8000),
+  });
+  if (!res.ok) return { pass: true }; // don't block on QC API failure
+  const data = await res.json();
+  const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
+  if (!toolCall) return { pass: true };
+  return JSON.parse(toolCall.function.arguments) as QCResult;
+}
+
+
 const TEAM_HINTS: Record<string, string> = {
   ATL: 'Atlanta', BOS: 'Boston', BKN: 'Brooklyn', CHA: 'Charlotte',
   CHI: 'Chicago', CLE: 'Cleveland', DAL: 'Dallas', DEN: 'Denver',
@@ -323,7 +398,8 @@ export async function POST(req: NextRequest) {
       )
     );
 
-    // Phase 3 + 4: SelectionAgent then WriterAgent, one question per season
+    // Phase 3 + 4 + 5: SelectionAgent → WriterAgent → QualityCheckAgent per season
+    const batchSeenAnswers = new Set<string>(seenAnswers as string[]);
     const questionResults = await Promise.allSettled(
       scoredSeasonData.map(async ({ season, scored }) => {
         const selection = await runSelectionAgent(scored, difficulty, usedNames, apiKey);
@@ -334,7 +410,7 @@ export async function POST(req: NextRequest) {
         const options = [selection.answerPlayer, ...selection.distractors]
           .sort(() => Math.random() - 0.5) as [string, string, string, string];
 
-        return {
+        const question: RawQuestion = {
           id: `ag_${answerStats.playerName.toLowerCase().replace(/[^a-z0-9]/g, '_')}_${season.replace('-', '_')}`,
           ppg: answerStats.ppg, rpg: answerStats.rpg, apg: answerStats.apg,
           spg: answerStats.spg, bpg: answerStats.bpg,
@@ -346,6 +422,17 @@ export async function POST(req: NextRequest) {
           _source: 'ai-agents',
           _rationale: selection.selectionRationale,
         };
+
+        // Phase 5: QualityCheckAgent — validate before allowing into the batch
+        const qc = await runQualityCheckAgent(question, batchSeenAnswers, apiKey);
+        if (!qc.pass) {
+          console.warn(`QC rejected question (${question.answer}): ${qc.failReason}`);
+          throw new Error(`QC failed: ${qc.failReason}`);
+        }
+
+        // Mark answer as seen so subsequent questions in this batch can't duplicate it
+        batchSeenAnswers.add(question.answer);
+        return question;
       })
     );
 
