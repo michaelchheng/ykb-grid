@@ -301,8 +301,8 @@ export async function POST(req: NextRequest) {
   const proto = host.startsWith('localhost') ? 'http' : 'https';
   const baseUrl = `${proto}://${host}`;
 
-  // Generate extra to overfill cache — rapid successive calls drain unique questions
-  const generateCount = count * 2;
+  // Generate extra to overfill cache — but cap at count+2 to avoid NBA API timeouts
+  const generateCount = count + 2;
   const strategyPool = difficulty === 'niche'
     ? [...NICHE_STRATEGIES, ...NICHE_STRATEGIES].sort(() => Math.random() - 0.5)
     : [...COMMON_STRATEGIES, ...COMMON_STRATEGIES].sort(() => Math.random() - 0.5);
