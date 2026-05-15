@@ -12,7 +12,7 @@ function ballIQ(e: Entry): { label: string; color: string } {
   const g = (key: string): TierStats => e.tiers[key] ?? { bestStreak: 0, totalCorrect: 0, totalAnswered: 0 };
   const acc = (s: TierStats) => s.totalAnswered > 0 ? s.totalCorrect / s.totalAnswered : 0;
   const nicheAcc = acc(g('niche')), hardAcc = acc(g('hard')), medAcc = acc(g('medium')), easyAcc = acc(g('easy'));
-  if (nicheAcc >= 0.6)                         return { label: 'Niche',               color: '#f59e0b' };
+  if (nicheAcc >= 0.6)                         return { label: 'Niche',               color: '#38bdf8' };
   if (hardAcc  >= 0.75 && medAcc >= 0.7)       return { label: 'Elite Ball Knowledge', color: '#f97316' };
   if (hardAcc  >= 0.5  || medAcc >= 0.7)       return { label: 'Film Room',            color: '#c084fc' };
   if (medAcc   >= 0.5  || easyAcc >= 0.7)      return { label: 'Hooper',               color: '#38bdf8' };
@@ -21,14 +21,14 @@ function ballIQ(e: Entry): { label: string; color: string } {
 
 const TIERS: { key: Tier; label: string; color: string; desc: string }[] = [
   { key: 'easy',   label: 'Easy',   color: '#34d399', desc: 'The stuff you should know'   },
-  { key: 'medium', label: 'Medium', color: '#fbbf24', desc: 'Requires some film time'     },
+  { key: 'medium', label: 'Medium', color: '#7dd3fc', desc: 'Requires some film time'     },
   { key: 'hard',   label: 'Hard',   color: '#f97316', desc: 'Deep cuts, rare facts'       },
   { key: 'niche',  label: 'Niche',  color: '#c084fc', desc: 'Borderline impossible'       },
 ];
 
 function RankBadge({ rank }: { rank: number }) {
   const base = 'w-7 h-7 rounded-lg flex items-center justify-center text-xs font-black tabular-nums shrink-0';
-  if (rank === 1) return <span className={`${base} bg-amber-500/15 text-amber-300`}>1</span>;
+  if (rank === 1) return <span className={`${base} bg-sky-400/15 text-sky-200`}>1</span>;
   if (rank === 2) return <span className={`${base} bg-slate-400/10  text-slate-300`}>2</span>;
   if (rank === 3) return <span className={`${base} bg-orange-700/15 text-orange-400`}>3</span>;
   return <span className={`${base} bg-white/4 text-white/25`}>{rank}</span>;
@@ -109,7 +109,7 @@ export default function LeaderboardPage() {
         {/* Rows */}
         {loading ? (
           <div className="flex justify-center py-16">
-            <div className="w-5 h-5 rounded-full border-2 border-amber-500/30 border-t-amber-500 animate-spin" />
+            <div className="w-5 h-5 rounded-full border-2 border-sky-400/30 border-t-sky-400 animate-spin" />
           </div>
         ) : sorted.length === 0 ? (
           <div className="text-center py-16">
@@ -137,7 +137,7 @@ export default function LeaderboardPage() {
                   </div>
                   <div className="text-right w-20 shrink-0">
                     {stats.bestStreak > 0
-                      ? <span className="text-xl font-black tabular-nums" style={{ color: stats.bestStreak >= 8 ? activeTier.color : stats.bestStreak >= 4 ? '#fbbf24' : 'rgba(255,255,255,0.6)' }}>{stats.bestStreak}</span>
+                      ? <span className="text-xl font-black tabular-nums" style={{ color: stats.bestStreak >= 8 ? activeTier.color : stats.bestStreak >= 4 ? '#7dd3fc' : 'rgba(255,255,255,0.6)' }}>{stats.bestStreak}</span>
                       : <span className="text-white/20 text-lg">—</span>}
                     <p className="text-white/35 text-[10px]">streak</p>
                   </div>
@@ -158,7 +158,7 @@ export default function LeaderboardPage() {
           <p className="text-[11px] text-white/50 uppercase tracking-widest mb-4">Ball IQ Ranks</p>
           <div className="grid grid-cols-2 gap-y-2.5 gap-x-4">
             {[
-              { label: 'Niche',               color: '#f59e0b', desc: '60%+ niche accuracy'          },
+              { label: 'Niche',               color: '#38bdf8', desc: '60%+ niche accuracy'          },
               { label: 'Elite Ball Knowledge', color: '#f97316', desc: '75% hard + 70% medium'       },
               { label: 'Film Room',            color: '#c084fc', desc: '50%+ hard or 70%+ medium'    },
               { label: 'Hooper',               color: '#38bdf8', desc: 'Getting there — keep playing' },

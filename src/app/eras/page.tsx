@@ -75,7 +75,7 @@ export default function ErasPage() {
           <div className="grid grid-cols-4 gap-3">
             {(['easy','medium','hard','niche'] as const).map(d => {
               const n = QUESTIONS.filter(q => q.difficulty === d).length;
-              const colors: Record<string, string> = { easy: '#34d399', medium: '#fbbf24', hard: '#f97316', niche: '#f87171' };
+              const colors: Record<string, string> = { easy: '#34d399', medium: '#7dd3fc', hard: '#f97316', niche: '#f87171' };
               return (
                 <div key={d} className="text-center">
                   <div className="text-2xl font-black" style={{ color: colors[d] }}>{n}</div>

@@ -11,7 +11,7 @@ export default function ContactPage() {
       <div className="max-w-sm w-full text-center">
 
         <h1 className="text-3xl font-black mb-1">
-          Hi, I&apos;m <span className="text-amber-400">Michael</span>
+          Hi, I&apos;m <span className="text-sky-300">Michael</span>
         </h1>
         <p className="text-white/40 text-base mb-8">
           Connecting those with elite ball knowledge.
@@ -25,7 +25,7 @@ export default function ContactPage() {
             <p className="text-[10px] text-white/30 uppercase tracking-widest mb-1">Email</p>
             <a
               href="mailto:work.michaelchheng@gmail.com"
-              className="text-amber-400 font-semibold hover:text-amber-300 transition-colors break-all"
+              className="text-sky-300 font-semibold hover:text-sky-200 transition-colors break-all"
             >
               work.michaelchheng@gmail.com
             </a>
@@ -34,7 +34,7 @@ export default function ContactPage() {
 
         <a
           href="/"
-          className="inline-block px-8 py-3 rounded-xl bg-amber-500 text-black font-black text-sm hover:bg-amber-400 transition-all"
+          className="inline-block px-8 py-3 rounded-xl bg-sky-400 text-black font-black text-sm hover:bg-sky-300 transition-all"
         >
           ← Back to the game
         </a>

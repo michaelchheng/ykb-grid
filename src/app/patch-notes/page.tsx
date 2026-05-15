@@ -54,9 +54,9 @@ const PATCHES: PatchEntry[] = [
 ];
 
 const TYPE_STYLE: Record<string, { dot: string; label: string }> = {
-  new:      { dot: 'bg-amber-400',   label: 'NEW'      },
+  new:      { dot: 'bg-sky-300',   label: 'NEW'      },
   improved: { dot: 'bg-blue-400',      label: 'IMPROVED' },
-  fixed:    { dot: 'bg-amber-500',    label: 'FIXED'    },
+  fixed:    { dot: 'bg-sky-400',    label: 'FIXED'    },
 };
 
 export default function PatchNotes() {
@@ -82,7 +82,7 @@ export default function PatchNotes() {
                   <span className={[
                     'text-[10px] font-black tracking-widest px-2 py-0.5 rounded',
                     patch.version === '3.0'
-                      ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                      ? 'bg-sky-400/20 text-sky-200 border border-sky-400/30'
                       : patch.version === '2.0'
                       ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30'
                       : 'bg-white/8 text-white/40 border border-white/10',
@@ -102,8 +102,8 @@ export default function PatchNotes() {
                       <div className="flex items-center gap-1.5 mt-0.5 shrink-0">
                         <span className={`w-1.5 h-1.5 rounded-full ${s.dot} mt-[3px]`} />
                         <span className={`text-[9px] font-black tracking-widest w-[54px] ${
-                          c.type === 'new' ? 'text-amber-400' :
-                          c.type === 'improved' ? 'text-blue-400' : 'text-amber-400'
+                          c.type === 'new' ? 'text-sky-300' :
+                          c.type === 'improved' ? 'text-blue-400' : 'text-sky-300'
                         }`}>{s.label}</span>
                       </div>
                       <p className="text-sm text-white/70 leading-relaxed">{c.text}</p>
