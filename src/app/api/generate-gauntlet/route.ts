@@ -61,10 +61,10 @@ const TEAM_HINTS: Record<string, string> = {
 };
 
 const SEASONS_BY_DIFF: Record<string, string[]> = {
-  Easy:   ['2023-24','2022-23','2021-22','2020-21','2019-20','2018-19','2017-18','2016-17','2015-16'],
-  Medium: ['2018-19','2017-18','2016-17','2015-16','2014-15','2013-14','2012-13','2011-12'],
-  Hard:   ['2013-14','2012-13','2011-12','2010-11','2009-10','2008-09','2007-08','2006-07','2005-06'],
-  Niche:  ['2005-06','2004-05','2003-04','2002-03','2001-02','2000-01','1999-00','1998-99','1997-98','1996-97'],
+  Easy:   ['2023-24','2022-23','2021-22','2020-21','2019-20','2018-19','2017-18','2016-17','2015-16','2014-15','2013-14','2012-13','2011-12','2010-11'],
+  Medium: ['2018-19','2017-18','2016-17','2015-16','2014-15','2013-14','2012-13','2011-12','2010-11','2009-10','2008-09'],
+  Hard:   ['2013-14','2012-13','2011-12','2010-11','2009-10','2008-09','2007-08','2006-07','2005-06','2004-05','2003-04','2002-03'],
+  Niche:  ['2007-08','2006-07','2005-06','2004-05','2003-04','2002-03','2001-02','2000-01','1999-00','1998-99','1997-98','1996-97'],
 };
 
 const RANK_RANGE: Record<string, [number, number]> = {
@@ -101,12 +101,12 @@ export async function POST(req: NextRequest) {
   const [rankMin, rankMax] = RANK_RANGE[difficulty];
 
   // Pick `count+2` unique seasons, fetch stats for each
-  const generateCount = count + 2;
-  const pickedSeasons = [...seasons].sort(() => Math.random() - 0.5).slice(0, Math.min(generateCount, seasons.length));
+  // Pick 3 random seasons, fetch stats, then pick `count` players spread across them
+  const seasonsToFetch = [...seasons].sort(() => Math.random() - 0.5).slice(0, 3);
 
   // Fetch all seasons in parallel first
   const seasonDataResults = await Promise.allSettled(
-    pickedSeasons.map(async (season) => {
+    seasonsToFetch.map(async (season) => {
       const players = await fetchPlayerSeasonStats(season, baseUrl);
       const pool = players.slice(rankMin, Math.min(rankMax, players.length)).filter(p => (p.gp as number) >= 30);
       return { season, pool };
@@ -119,31 +119,25 @@ export async function POST(req: NextRequest) {
   // Build all wrong-option names from ALL seasons (cross-season pool)
   const allPlayerNames = Array.from(new Set(seasonData.flatMap(s => s.pool.map(p => p.playerName as string))));
 
-  const fetchResults = await Promise.allSettled(
-    seasonData.map(async ({ season, pool }) => {
-      // Pick answer player — skip names already used
-      const freshPool = pool.filter(p => !usedNames.has(p.playerName as string));
-      const answerPool = freshPool.length >= 2 ? freshPool : pool;
-      const answerIdx = Math.floor(Math.random() * answerPool.length);
-      const answer = answerPool[answerIdx];
+  // Pick `count` unique players spread across the fetched seasons, skipping already-used names
+  const candidates: {season: string; answer: Record<string,unknown>; wrongs: {playerName: string}[]; teamHint: string}[] = [];
+  const usedInBatch = new Set<string>();
 
-      // Pick 3 wrong options from cross-season pool, excluding the answer
-      const wrongPool = allPlayerNames.filter(n => n !== (answer.playerName as string));
+  for (const { season, pool } of seasonData) {
+    const freshPool = pool
+      .filter(p => !usedNames.has(p.playerName as string) && !usedInBatch.has(p.playerName as string))
+      .sort(() => Math.random() - 0.5);
+    const pickCount = Math.ceil(count / seasonsToFetch.length) + 1;
+    for (const answer of freshPool.slice(0, pickCount)) {
+      const wrongPool = allPlayerNames.filter(n => n !== (answer.playerName as string) && !usedInBatch.has(n));
       const wrongs = wrongPool.sort(() => Math.random() - 0.5).slice(0, 3).map(name => ({ playerName: name }));
-      if (wrongs.length < 3) return null;
+      if (wrongs.length < 3) continue;
+      candidates.push({ season, answer, wrongs, teamHint: TEAM_HINTS[answer.team as string] ?? String(answer.team) });
+      usedInBatch.add(answer.playerName as string);
+    }
+  }
 
-      return {
-        season,
-        answer,
-        wrongs,
-        teamHint: TEAM_HINTS[answer.team as string] ?? String(answer.team),
-      };
-    })
-  );
-
-  const matchups = fetchResults
-    .filter((r): r is PromiseFulfilledResult<{season: string; answer: Record<string,unknown>; wrongs: {playerName: string}[]; teamHint: string}> => r.status === 'fulfilled' && r.value !== null)
-    .map(r => r.value);
+  const matchups = candidates.slice(0, count + 2);
 
   if (matchups.length === 0) {
     return Response.json({ questions: [], error: 'No data' }, { status: 200 });
