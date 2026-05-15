@@ -267,7 +267,7 @@ const SEASONS_BY_DIFF: Record<string, string[]> = {
 
 // ── Main Route ────────────────────────────────────────────────────────────────
 export async function POST(req: NextRequest) {
-  const { difficulty = 'Medium', count = 5 } = await req.json().catch(() => ({}));
+  const { difficulty = 'Medium', count = 5, seenAnswers = [] } = await req.json().catch(() => ({}));
 
   const cacheKey = difficulty;
   const cached = gCache.get(cacheKey) ?? [];
@@ -287,7 +287,8 @@ export async function POST(req: NextRequest) {
   const baseUrl = `${proto}://${host}`;
 
   const seasons = SEASONS_BY_DIFF[difficulty] ?? SEASONS_BY_DIFF['Medium'];
-  const usedNames = gUsedNames.get(cacheKey) ?? new Set<string>();
+  const serverUsed = gUsedNames.get(cacheKey) ?? new Set<string>();
+  const usedNames = new Set<string>([...serverUsed, ...(seenAnswers as string[])]);
   const pickedSeasons = [...seasons].sort(() => Math.random() - 0.5).slice(0, 3);
 
   try {

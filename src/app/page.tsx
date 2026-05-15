@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { getQuestionsByDifficulty, type Question } from '@/data/questions';
 import { GAUNTLET_QUESTIONS, type GauntletQuestion } from '@/data/gauntlet';
 import { DRAFT_CHALLENGES, type DraftChallenge, type DraftPlayer } from '@/data/draft';
@@ -230,17 +230,22 @@ export default function Home() {
     }
   }, [fetchingAi]);
 
+  const seenGauntletAnswers = useRef<Set<string>>(new Set());
+
   const fetchAiGauntlet = useCallback(async (difficulty: string) => {
     try {
       const diff = difficulty === 'easy' ? 'Easy' : difficulty === 'medium' ? 'Medium' : difficulty === 'hard' ? 'Hard' : 'Niche';
       const res = await fetch('/api/generate-gauntlet', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ difficulty: diff, count: 12 }),
+        body: JSON.stringify({ difficulty: diff, count: 12, seenAnswers: [...seenGauntletAnswers.current] }),
       });
       const data = await res.json();
       const qs = (data.questions ?? []) as GauntletQuestion[];
-      if (qs.length > 0) setAiGauntletBuffer(prev => [...prev, ...qs]);
+      if (qs.length > 0) {
+        qs.forEach(q => seenGauntletAnswers.current.add(q.answer));
+        setAiGauntletBuffer(prev => [...prev, ...qs]);
+      }
     } catch { /* silent */ }
   }, []);
 
