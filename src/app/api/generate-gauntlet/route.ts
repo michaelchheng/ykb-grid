@@ -1,21 +1,21 @@
 /**
  * Multi-Agent Gauntlet Question Generator
  *
- * Architecture — three agents in sequence, each using GPT-4o tool/function calling:
+ * Pipeline — five agents in sequence:
  *
- *  1. StatsAgent    — given a season + difficulty, fetches real NBA per-game stats
- *                     and scores each player's "identifiability" so the model can
- *                     reason about which players are genuinely hard/easy to identify.
+ *  1. Data Fetch     — pulls real NBA per-game stats from leagueLeaders API
+ *  1.5 BaselineAgent — pure math (no LLM): computes normalized euclidean stat
+ *                      distances across ALL fetched seasons combined, finds each
+ *                      player's nearest statistical twins, annotates each player
+ *                      with a twinCount + closestTwin so StatsAgent has real
+ *                      comparison evidence rather than guessing from names.
+ *  2. StatsAgent     — scores stat distinctiveness using BaselineAgent context
+ *  3. SelectionAgent — picks answer + distractors, filtered by difficulty band
+ *  4. WriterAgent    — writes flavor text without seeing distractors
+ *  5. QualityCheckAgent — hard + LLM validation before any question reaches client
  *
- *  2. SelectionAgent — receives the scored player pool and uses tool calling to pick
- *                     one answer player + three plausible distractors. The model
- *                     reasons explicitly about era, stat similarity, and position.
- *
- *  3. WriterAgent   — receives only the answer player's stats (not the distractors)
- *                     and writes flavor text + position hint via tool calling.
- *
- * Demonstrates: task decomposition, OpenAI function/tool calling, inter-agent
- * context passing, typed interfaces, and observability via _rationale field.
+ * Demonstrates: task decomposition, tool calling, inter-agent context passing,
+ * pure-math pre-processing feeding LLM agents, and observability via _rationale.
  */
 
 import { NextRequest } from 'next/server';
@@ -43,6 +43,74 @@ interface AgentSelection {
 interface AgentFlavor {
   flavor: string;
   positionHint: string;
+}
+interface BaselinePlayer extends RawPlayer {
+  twinCount: number;       // how many players in the full cross-season pool are within distance threshold
+  closestTwinName: string; // name of the single most statistically similar player
+  closestTwinDist: number; // normalized euclidean distance to that twin (0=identical, 1=very different)
+  season: string;
+}
+
+// ── Phase 1.5: BaselineAgent (pure math — no LLM) ─────────────────────────────
+// Computes normalized euclidean distance on [ppg, rpg, apg, spg, bpg] across
+// ALL fetched seasons combined. For each player, finds their nearest statistical
+// twins and annotates them so StatsAgent has real comparison evidence.
+//
+// A player with 0 twins within the threshold is a true outlier.
+// A player with 8 twins is indistinguishable from the field.
+function runBaselineAgent(seasonData: { season: string; players: RawPlayer[] }[]): BaselinePlayer[] {
+  // Flatten all players across all seasons into one pool for cross-season comparison
+  const allPlayers: (RawPlayer & { season: string })[] = seasonData.flatMap(
+    ({ season, players }) => players.map(p => ({ ...p, season }))
+  );
+
+  if (allPlayers.length === 0) return [];
+
+  // Compute per-stat max for normalization (avoid division by zero)
+  const maxPpg = Math.max(...allPlayers.map(p => p.ppg), 1);
+  const maxRpg = Math.max(...allPlayers.map(p => p.rpg), 1);
+  const maxApg = Math.max(...allPlayers.map(p => p.apg), 1);
+  const maxSpg = Math.max(...allPlayers.map(p => p.spg), 1);
+  const maxBpg = Math.max(...allPlayers.map(p => p.bpg), 1);
+
+  const normalize = (p: RawPlayer) => [
+    p.ppg / maxPpg,
+    p.rpg / maxRpg,
+    p.apg / maxApg,
+    p.spg / maxSpg,
+    p.bpg / maxBpg,
+  ];
+
+  const euclidean = (a: number[], b: number[]) =>
+    Math.sqrt(a.reduce((sum, ai, i) => sum + (ai - b[i]) ** 2, 0));
+
+  // Threshold: ~15% of the max possible distance in 5D normalized space (sqrt(5) ≈ 2.24)
+  const TWIN_THRESHOLD = 0.15;
+
+  const vectors = allPlayers.map(normalize);
+
+  return allPlayers.map((player, i) => {
+    let closestTwinDist = Infinity;
+    let closestTwinName = '';
+    let twinCount = 0;
+
+    for (let j = 0; j < allPlayers.length; j++) {
+      if (i === j) continue;
+      const dist = euclidean(vectors[i], vectors[j]);
+      if (dist < TWIN_THRESHOLD) twinCount++;
+      if (dist < closestTwinDist) {
+        closestTwinDist = dist;
+        closestTwinName = allPlayers[j].playerName;
+      }
+    }
+
+    return {
+      ...player,
+      twinCount,
+      closestTwinName,
+      closestTwinDist: Math.round(closestTwinDist * 1000) / 1000,
+    };
+  });
 }
 
 // ── NBA Stats Fetch ────────────────────────────────────────────────────────────
@@ -73,13 +141,13 @@ async function fetchPlayerSeasonStats(season: string, baseUrl: string): Promise<
   }));
 }
 
-// ── Agent 1: StatsAgent ────────────────────────────────────────────────────────
-// Scores each player's STAT DISTINCTIVENESS — how unique their numbers are
-// compared to league peers that season. High = very distinctive (outlier stats,
-// easy to identify). Low = generic / blends into the field (hard to identify).
-// This drives difficulty: Easy gets high-distinctiveness players, Niche gets low.
+// ── Agent 2: StatsAgent ────────────────────────────────────────────────────────
+// Scores each player's STAT DISTINCTIVENESS using BaselineAgent context.
+// The model knows exactly how many statistical twins each player has — so scoring
+// is grounded in real comparisons, not guesses.
 async function runStatsAgent(
   players: RawPlayer[], season: string, difficulty: string, apiKey: string,
+  baselineLookup: Map<string, BaselinePlayer>,
 ): Promise<ScoredPlayer[]> {
   const tools = [{
     type: 'function' as const,
@@ -109,10 +177,14 @@ async function runStatsAgent(
     },
   }];
 
-  // Include full stat line so model can assess distinctiveness from numbers alone
-  const playerList = players.slice(0, 50).map(p =>
-    `${p.playerName}: ${p.ppg}pts/${p.rpg}reb/${p.apg}ast/${p.spg}stl/${p.bpg}blk, ${p.gp}GP, rank #${p.rank}`
-  ).join('\n');
+  // Include full stat line + baseline twin data so model scores with real evidence
+  const playerList = players.slice(0, 50).map(p => {
+    const b = baselineLookup.get(p.playerName);
+    const twinNote = b
+      ? `[${b.twinCount} twins within threshold, closest: ${b.closestTwinName} dist=${b.closestTwinDist}]`
+      : '';
+    return `${p.playerName}: ${p.ppg}pts/${p.rpg}reb/${p.apg}ast/${p.spg}stl/${p.bpg}blk, ${p.gp}GP, rank #${p.rank} ${twinNote}`;
+  }).join('\n');
 
   const res = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
@@ -122,7 +194,7 @@ async function runStatsAgent(
       tools, tool_choice: { type: 'function', function: { name: 'score_players' } },
       messages: [{
         role: 'user',
-        content: `StatsAgent: Season ${season}.\nScore each player's STAT DISTINCTIVENESS — how unique and identifiable their stat line is compared to peers this season. Base your score ONLY on the numbers (pts/reb/ast/stl/blk), NOT on name recognition. A player averaging 35ppg is an extreme outlier = 95. A player averaging 13/4/2 is generic = 25.\n\n${playerList}\n\nCall score_players.`,
+        content: `StatsAgent: Season ${season}.\nScore each player's STAT DISTINCTIVENESS using the baseline comparison data provided. Each player has a twin count (how many players in the full pool have nearly identical stats) and a closest twin distance.\n\n0 twins + high distance = extreme outlier = score 90+\nMany twins + low distance = generic, hard to identify = score <20\n\nBase your score ONLY on stat uniqueness, NOT name recognition.\n\n${playerList}\n\nCall score_players.`,
       }],
     }),
     signal: AbortSignal.timeout(20000),
@@ -389,10 +461,18 @@ export async function POST(req: NextRequest) {
       }))
     );
 
-    // Phase 2: StatsAgent scores all seasons in parallel
+    // Phase 1.5: BaselineAgent — pure math, no LLM
+    // Computes cross-season euclidean distances, annotates every player with
+    // twin count + closest twin so StatsAgent can score with real evidence.
+    const baselinePlayers = runBaselineAgent(rawSeasonData);
+    const baselineLookup = new Map<string, BaselinePlayer>(
+      baselinePlayers.map(p => [p.playerName, p])
+    );
+
+    // Phase 2: StatsAgent scores all seasons in parallel (now receives baseline context)
     const scoredSeasonData = await Promise.all(
       rawSeasonData.map(({ season, players }) =>
-        runStatsAgent(players, season, difficulty, apiKey)
+        runStatsAgent(players, season, difficulty, apiKey, baselineLookup)
           .then(scored => ({ season, scored }))
           .catch(() => ({ season, scored: players.map(p => ({ ...p, era: season.slice(0, 4), identifiabilityScore: 50 })) }))
       )
