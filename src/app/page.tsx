@@ -68,7 +68,7 @@ function pickQuestion(streak: number, used: Set<string>, aiExtra: Question[], ti
   const draftDiff = gauntDiff;
 
   const rand = Math.random();
-  const draftChance    = streak >= 5 ? 0.15 : 0;
+  const draftChance    = tier === 'niche' && streak >= 5 ? 0.15 : 0;
   const gauntletChance = 0.30;
   let qType: 'comparison' | 'gauntlet' | 'draft' = 'comparison';
   if (rand < draftChance) qType = 'draft';
@@ -117,13 +117,7 @@ export default function Home() {
   const [gameState, setGameState]             = useState<GameState>('hub');
   const [streak, setStreak]                   = useState(0);
   const [currentQ, setCurrentQ]               = useState<AnyQ | null>(null);
-  const [usedIds, setUsedIds]                 = useState<Set<string>>(() => {
-    if (typeof window === 'undefined') return new Set();
-    try {
-      const saved = localStorage.getItem('ykb_used_easy');
-      return saved ? new Set(JSON.parse(saved) as string[]) : new Set();
-    } catch { return new Set(); }
-  });
+  const [usedIds, setUsedIds]                 = useState<Set<string>>(new Set());
   const [username, setUsername]               = useState<string | null>(null);
   const [userEmail, setUserEmail]             = useState<string | null>(null);
   const [showModal, setShowModal]             = useState(false);
