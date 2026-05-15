@@ -3,7 +3,8 @@ import { NextRequest } from 'next/server';
 export const dynamic = 'force-dynamic';
 
 // ── Cache ──────────────────────────────────────────────────────────────────────
-const gCache = new Map<string, object[]>();
+const gCache     = new Map<string, object[]>();
+const gUsedNames = new Map<string, Set<string>>(); // track answer names already seen
 
 // ── NBA per-game stats fetch ───────────────────────────────────────────────────
 async function fetchPlayerSeasonStats(
@@ -85,6 +86,8 @@ export async function POST(req: NextRequest) {
     return Response.json({ questions: batch, source: 'cache' });
   }
 
+  const usedNames = gUsedNames.get(cacheKey) ?? new Set<string>();
+
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey || apiKey.startsWith('your-')) {
     return Response.json({ questions: [], error: 'No OpenAI key' }, { status: 200 });
@@ -99,21 +102,34 @@ export async function POST(req: NextRequest) {
 
   // Pick `count+2` unique seasons, fetch stats for each
   const generateCount = count + 2;
-  const pickedSeasons = [...seasons].sort(() => Math.random() - 0.5).slice(0, generateCount);
+  const pickedSeasons = [...seasons].sort(() => Math.random() - 0.5).slice(0, Math.min(generateCount, seasons.length));
 
-  const fetchResults = await Promise.allSettled(
+  // Fetch all seasons in parallel first
+  const seasonDataResults = await Promise.allSettled(
     pickedSeasons.map(async (season) => {
       const players = await fetchPlayerSeasonStats(season, baseUrl);
       const pool = players.slice(rankMin, Math.min(rankMax, players.length)).filter(p => (p.gp as number) >= 30);
-      if (pool.length < 4) return null;
+      return { season, pool };
+    })
+  );
+  const seasonData = seasonDataResults
+    .filter((r): r is PromiseFulfilledResult<{season: string; pool: Record<string,unknown>[]}> => r.status === 'fulfilled' && r.value.pool.length >= 4)
+    .map(r => r.value);
 
-      // Pick one answer player
-      const answerIdx = Math.floor(Math.random() * pool.length);
-      const answer = pool[answerIdx];
+  // Build all wrong-option names from ALL seasons (cross-season pool)
+  const allPlayerNames = Array.from(new Set(seasonData.flatMap(s => s.pool.map(p => p.playerName as string))));
 
-      // Pick 3 wrong options: same era, different players
-      const otherPool = pool.filter((_, i) => i !== answerIdx);
-      const wrongs = otherPool.sort(() => Math.random() - 0.5).slice(0, 3);
+  const fetchResults = await Promise.allSettled(
+    seasonData.map(async ({ season, pool }) => {
+      // Pick answer player — skip names already used
+      const freshPool = pool.filter(p => !usedNames.has(p.playerName as string));
+      const answerPool = freshPool.length >= 2 ? freshPool : pool;
+      const answerIdx = Math.floor(Math.random() * answerPool.length);
+      const answer = answerPool[answerIdx];
+
+      // Pick 3 wrong options from cross-season pool, excluding the answer
+      const wrongPool = allPlayerNames.filter(n => n !== (answer.playerName as string));
+      const wrongs = wrongPool.sort(() => Math.random() - 0.5).slice(0, 3).map(name => ({ playerName: name }));
       if (wrongs.length < 3) return null;
 
       return {
@@ -126,8 +142,8 @@ export async function POST(req: NextRequest) {
   );
 
   const matchups = fetchResults
-    .filter((r): r is PromiseFulfilledResult<NonNullable<{season: string; answer: Record<string,unknown>; wrongs: Record<string,unknown>[]; teamHint: string}>> => r.status === 'fulfilled' && r.value !== null)
-    .map(r => r.value!);
+    .filter((r): r is PromiseFulfilledResult<{season: string; answer: Record<string,unknown>; wrongs: {playerName: string}[]; teamHint: string}> => r.status === 'fulfilled' && r.value !== null)
+    .map(r => r.value);
 
   if (matchups.length === 0) {
     return Response.json({ questions: [], error: 'No data' }, { status: 200 });
@@ -139,7 +155,7 @@ export async function POST(req: NextRequest) {
     return `PLAYER ${i + 1}: ${a.playerName} (${a.team}) — ${m.season}\n` +
       `  Stats: ${a.ppg} PPG, ${a.rpg} RPG, ${a.apg} APG, ${a.spg} SPG, ${a.bpg} BPG\n` +
       `  Games: ${a.gp} GP\n` +
-      `  Wrong options: ${m.wrongs.map((w: Record<string,unknown>) => w.playerName).join(', ')}`;
+      `  Wrong options: ${m.wrongs.map(w => w.playerName).join(', ')}`;
   }).join('\n\n');
 
   const userPrompt = `Here are ${matchups.length} real NBA player-seasons. For each, write a short "flavor" and a "positionHint".
@@ -180,7 +196,7 @@ Return ONLY the raw JSON array, no markdown fences.`;
     const questions = matchups.map((m, i) => {
       const a = m.answer;
       const f = flavors[i] ?? { flavor: '', positionHint: 'Forward' };
-      const allOptions = [a.playerName, ...m.wrongs.map((w: Record<string,unknown>) => w.playerName)] as [string, string, string, string];
+      const allOptions = [a.playerName as string, ...m.wrongs.map(w => w.playerName)] as [string, string, string, string];
       const shuffled = allOptions.sort(() => Math.random() - 0.5) as [string, string, string, string];
 
       return {
@@ -204,6 +220,11 @@ Return ONLY the raw JSON array, no markdown fences.`;
 
     const existing = gCache.get(cacheKey) ?? [];
     gCache.set(cacheKey, [...existing, ...questions]);
+
+    // Track used answer names to prevent repeats
+    const updatedUsed = gUsedNames.get(cacheKey) ?? new Set<string>();
+    questions.forEach(q => updatedUsed.add((q as {answer: string}).answer));
+    gUsedNames.set(cacheKey, updatedUsed);
 
     return Response.json({ questions, source: 'ai' });
   } catch (e) {
