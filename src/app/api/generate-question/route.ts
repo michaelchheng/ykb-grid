@@ -223,16 +223,17 @@ function pickPair(
   let idxA: number, idxB: number;
   switch (difficulty) {
     case 'easy':
-      idxA = Math.floor(r() * 3);
-      idxB = Math.min(leaders.length - 1, 40 + Math.floor(r() * 30));
+      // Top-15 recognizable player vs someone deep in the list — obvious gap
+      idxA = Math.floor(r() * 15);
+      idxB = Math.min(leaders.length - 1, 55 + Math.floor(r() * 45));
       break;
     case 'medium':
-      idxA = 2 + Math.floor(r() * 8);
-      idxB = Math.min(leaders.length - 1, 20 + Math.floor(r() * 20));
+      idxA = 5 + Math.floor(r() * 15);
+      idxB = Math.min(leaders.length - 1, 25 + Math.floor(r() * 25));
       break;
     case 'hard':
-      idxA = Math.floor(r() * 15);
-      idxB = idxA + 1 + Math.floor(r() * 3);
+      idxA = Math.floor(r() * 20);
+      idxB = idxA + 1 + Math.floor(r() * 4);
       break;
     default:
       idxA = 0; idxB = 5;
@@ -260,13 +261,16 @@ const SYSTEM_PROMPT = `You write flavor text for "Who Had More?" — a basketbal
 
 Your ONLY job: write a 1-2 sentence "flavor" field for each matchup. Rules:
 - Name both players and mention their exact stat values
-- Add genuine basketball context (was this a career year? a tight race? historically significant? obscure role player?)
-- For NICHE matchups: the players should be deep cuts — backup guards, fringe starters, one-season wonders, old-school names. Celebrate the obscurity. Be specific about WHY this is impossible to know.
-- For niche near-identical stats: lean into the absurdity of the gap being so small
-- Write in a knowledgeable, slightly snarky fan's voice — opinionated, vivid, not bland
+- Add genuine basketball context (career year? tight race? historically significant? obscure deep cut?)
+- For NICHE matchups: players are deep cuts — backup guards, fringe starters, one-season wonders, old-school names. Celebrate the obscurity. Be specific about WHY this is impossible to know.
+- For niche near-identical stats: lean into how absurdly close the gap is
+- Write in a knowledgeable, slightly snarky fan's voice — opinionated, vivid, punchy
 - Never change any stat numbers I provide
-- Do NOT say things like "Did you know" — just state it confidently
-- For niche: avoid obvious stars. If a star appears in a niche matchup, compare them to an obscure player and make the comparison feel unfair`;
+- Do NOT say "Did you know" — state it confidently
+- NEVER start a sentence with "In a battle of", "In a season where", "In a", "In what", "In the" — vary your openings
+- NEVER use the phrase "just a number" or "showcasing" or "highlighting"
+- Start each flavor differently — lead with the player name, a stat fact, a team context, a historical note, or a contrast
+- For niche: if a star appears, make the comparison feel unfair and weird`;`
 
 interface MatchupData {
   strategy: StatStrategy;
@@ -297,13 +301,15 @@ export async function POST(req: NextRequest) {
   const proto = host.startsWith('localhost') ? 'http' : 'https';
   const baseUrl = `${proto}://${host}`;
 
-  // Pick `count` unique random strategies — niche uses obscure stat pool
+  // Generate extra to overfill cache — rapid successive calls drain unique questions
+  const generateCount = count * 2;
   const strategyPool = difficulty === 'niche'
-    ? [...NICHE_STRATEGIES].sort(() => Math.random() - 0.5)
-    : [...COMMON_STRATEGIES].sort(() => Math.random() - 0.5);
-  const strategies = strategyPool.slice(0, count);
+    ? [...NICHE_STRATEGIES, ...NICHE_STRATEGIES].sort(() => Math.random() - 0.5)
+    : [...COMMON_STRATEGIES, ...COMMON_STRATEGIES].sort(() => Math.random() - 0.5);
+  const strategies = strategyPool.slice(0, generateCount);
 
   // Fetch NBA data in parallel — each gets a random season
+  // We fetch generateCount matchups to overfill the cache
   const fetchResults = await Promise.allSettled(
     strategies.map(async (strategy) => {
       const season = randomSeason(difficulty);
@@ -340,7 +346,7 @@ export async function POST(req: NextRequest) {
     .join('\n');
 
   const userPrompt = `Here are ${matchups.length} real NBA stat matchups from the official NBA stats API.
-Use EXACTLY the stat values shown — never change them.
+Use EXACTLY the stat values shown — never change them. Write each flavor sentence with a DIFFERENT opening — vary leads across all ${matchups.length} matchups.
 
 ${dataContext}
 
