@@ -76,9 +76,10 @@ function pickQuestion(streak: number, used: Set<string>, aiExtra: Question[], ti
 
   if (qType === 'comparison') {
     const staticPool = getQuestionsByDifficulty(compDiff as 'easy' | 'medium' | 'hard' | 'niche');
-    const aiPool     = aiExtra.filter(q => !used.has(q.id));
-    const combined   = [...aiPool, ...staticPool].filter(q => !used.has(q.id));
-    const pool       = combined.length > 0 ? combined : staticPool;
+    const aiPool     = aiExtra; // AI questions have unique IDs — always fresh, never block them
+    const unusedStatic = staticPool.filter(q => !used.has(q.id));
+    // Prefer AI questions heavily; fall back to unused static, then any static
+    const pool = aiPool.length > 0 ? aiPool : unusedStatic.length > 0 ? unusedStatic : staticPool;
     const q = pool[Math.floor(Math.random() * pool.length)];
     if (!q) return null;
     return { type: 'comparison', id: q.id, data: q };
@@ -191,12 +192,12 @@ export default function Home() {
           es.close();
           const data = JSON.parse(e.data) as { questions: Record<string, unknown>[] };
           const qs: Question[] = (data.questions ?? []).map((q) => ({
-            id: (() => {
+            id: String(q.id ?? (() => {
               const a = String((q.playerA as Record<string, unknown>)?.name ?? '');
               const b = String((q.playerB as Record<string, unknown>)?.name ?? '');
-              const s = String(q.label ?? '');
-              return `${a}|${b}|${s}`.toLowerCase().replace(/\s+/g, '_');
-            })(),
+              return `${a}|${b}|${Date.now()}|${Math.random()}`.toLowerCase().replace(/\s+/g, '_');
+            })()),
+
             era: (q.era as 'classic' | 'modern') ?? 'modern',
             category: (q.category as Question['category']) ?? 'points',
             label: String(q.label ?? ''),
@@ -255,7 +256,7 @@ export default function Home() {
     setCurrentQ(q);
     resetAnswerState(q);
     setGameState('playing');
-    fetchAiQuestions(selectedTier);
+    fetchAiQuestions(selectedTier); // always prefetch fresh batch
   }
 
   function handleResult(correct: boolean) {
@@ -335,7 +336,7 @@ export default function Home() {
     setCurrentQ(q);
     resetAnswerState(q);
     setGameState('playing');
-    if (aiBuffer.length < 5) fetchAiQuestions(selectedTier);
+    if (aiBuffer.length < 3) fetchAiQuestions(selectedTier);
   }
 
 
