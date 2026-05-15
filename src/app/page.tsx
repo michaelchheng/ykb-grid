@@ -236,7 +236,7 @@ export default function Home() {
       const res = await fetch('/api/generate-gauntlet', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ difficulty: diff, count: 6 }),
+        body: JSON.stringify({ difficulty: diff, count: 12 }),
       });
       const data = await res.json();
       const qs = (data.questions ?? []) as GauntletQuestion[];
@@ -273,7 +273,7 @@ export default function Home() {
     resetAnswerState(q);
     setGameState('playing');
     fetchAiQuestions(selectedTier);
-    fetchAiGauntlet(selectedTier);
+    if (aiGauntletBuffer.length < 6) fetchAiGauntlet(selectedTier);
   }
 
   function handleResult(correct: boolean) {
@@ -358,7 +358,7 @@ export default function Home() {
     resetAnswerState(q);
     setGameState('playing');
     if (aiBuffer.length < 3) fetchAiQuestions(selectedTier);
-    if (aiGauntletBuffer.length < 3) fetchAiGauntlet(selectedTier);
+    if (aiGauntletBuffer.length < 6) fetchAiGauntlet(selectedTier);
   }
 
 

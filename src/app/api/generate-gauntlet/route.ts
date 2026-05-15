@@ -101,8 +101,8 @@ export async function POST(req: NextRequest) {
   const [rankMin, rankMax] = RANK_RANGE[difficulty];
 
   // Pick `count+2` unique seasons, fetch stats for each
-  // Pick 3 random seasons, fetch stats, then pick `count` players spread across them
-  const seasonsToFetch = [...seasons].sort(() => Math.random() - 0.5).slice(0, 3);
+  // Pick 6 random seasons, fetch stats, then pick `count` players spread across them
+  const seasonsToFetch = [...seasons].sort(() => Math.random() - 0.5).slice(0, Math.min(6, seasons.length));
 
   // Fetch all seasons in parallel first
   const seasonDataResults = await Promise.allSettled(
@@ -171,7 +171,7 @@ Return ONLY the raw JSON array, no markdown fences.`;
       body: JSON.stringify({
         model: 'gpt-4o-mini',
         temperature: 0.8,
-        max_tokens: 2000,
+        max_tokens: 3500,
         messages: [
           { role: 'system', content: 'You write flavor text for a basketball trivia game. Be vivid, specific, and direct. Never start sentences with "In a".' },
           { role: 'user', content: userPrompt },
