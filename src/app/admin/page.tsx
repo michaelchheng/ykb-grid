@@ -306,9 +306,6 @@ export default function AdminPage() {
   );
 }
 
-export default function AdminPage() {
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isAdmin, setIsAdmin] = useState(false);
   const [mounted, setMounted] = useState(false);
