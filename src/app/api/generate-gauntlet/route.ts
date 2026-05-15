@@ -169,7 +169,7 @@ Return ONLY the raw JSON array, no markdown fences.`;
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: 'gpt-4o',
         temperature: 0.8,
         max_tokens: 3500,
         messages: [
