@@ -18,8 +18,8 @@ function getAdminDb() {
 }
 
 export async function GET(req: NextRequest) {
-  // Require admin key in header or query param
-  const key = req.headers.get('x-admin-key') ?? new URL(req.url).searchParams.get('key');
+  // Key must be in header only — never in URL (shows in server logs)
+  const key = req.headers.get('x-admin-key');
   if (key !== 'YKB_ADMIN_2026') {
     return Response.json({ error: 'unauthorized' }, { status: 401 });
   }

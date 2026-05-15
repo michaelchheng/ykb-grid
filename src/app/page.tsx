@@ -284,6 +284,21 @@ export default function Home() {
 
   function handleResult(correct: boolean) {
     addStat(correct, selectedTier, uid);
+    // Track feedback for all question types
+    if (currentQ && currentQ.type !== 'gauntlet') {
+      fetch('/api/gauntlet-feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          questionId: currentQ.id,
+          answer: null,
+          correct,
+          timeToAnswerMs: Date.now() - gauntletQuestionStartMs.current,
+          difficulty: selectedTier,
+          identifiabilityScore: null,
+        }),
+      }).catch(() => {});
+    }
     if (correct) {
       const newStreak = streak + 1;
       setStreak(newStreak);
@@ -376,7 +391,7 @@ export default function Home() {
     const q = pickQuestion(streak, newUsed, aiBuffer, selectedTier, aiGauntletBuffer);
     setCurrentQ(q);
     resetAnswerState(q);
-    if (q?.type === 'gauntlet') gauntletQuestionStartMs.current = Date.now();
+    gauntletQuestionStartMs.current = Date.now();
     setGameState('playing');
     if (aiBuffer.length < 3) fetchAiQuestions(selectedTier);
     if (aiGauntletBuffer.length < 6) fetchAiGauntlet(selectedTier);

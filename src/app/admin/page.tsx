@@ -33,7 +33,9 @@ export default function AdminPage() {
   const fetchStats = useCallback(async () => {
     setStatsLoading(true);
     try {
-      const res = await fetch('/api/admin-stats?key=YKB_ADMIN_2026');
+      const res = await fetch('/api/admin-stats', {
+        headers: { 'x-admin-key': 'YKB_ADMIN_2026' },
+      });
       if (res.ok) setStats(await res.json());
     } catch { /* ignore */ }
     setStatsLoading(false);
