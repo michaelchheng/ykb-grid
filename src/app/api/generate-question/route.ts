@@ -270,7 +270,7 @@ Your ONLY job: write a 1-2 sentence "flavor" field for each matchup. Rules:
 - NEVER start a sentence with "In a battle of", "In a season where", "In a", "In what", "In the" — vary your openings
 - NEVER use the phrase "just a number" or "showcasing" or "highlighting"
 - Start each flavor differently — lead with the player name, a stat fact, a team context, a historical note, or a contrast
-- For niche: if a star appears, make the comparison feel unfair and weird`;`
+- For niche: if a star appears, make the comparison feel unfair and weird`;
 
 interface MatchupData {
   strategy: StatStrategy;
