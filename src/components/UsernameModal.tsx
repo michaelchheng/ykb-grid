@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import { signInWithPopup, createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile, sendPasswordResetEmail } from 'firebase/auth';
-import { auth, googleProvider } from '@/lib/firebase';
+import { doc, getDoc } from 'firebase/firestore';
+import { auth, db, googleProvider } from '@/lib/firebase';
 import { pullFromFirestore, saveUsername } from '@/lib/tierSync';
 
 interface Props { onSubmit: (name: string) => void; }
@@ -41,11 +42,21 @@ export default function UsernameModal({ onSubmit }: Props) {
   async function signInGoogle() {
     setLoading(true); setError('');
     try {
-      const r    = await signInWithPopup(auth, googleProvider);
+      const r = await signInWithPopup(auth, googleProvider);
+      const uid = r.user.uid;
+      // Check if returning user already has a handle in Firestore
+      const snap = await getDoc(doc(db, 'users', uid));
+      if (snap.exists() && snap.data().handle) {
+        // Returning user — sync and go straight in
+        const existingHandle = snap.data().handle as string;
+        await syncAndSubmit(uid, existingHandle, onSubmit);
+        return;
+      }
+      // New user — ask them to pick a handle
       const suggested = (r.user.displayName || r.user.email?.split('@')[0] || 'Player').slice(0, 20);
-      setPendingUid(r.user.uid);
+      setPendingUid(uid);
       setHandle(suggested);
-      await Promise.all(TIERS.map(t => pullFromFirestore(r.user.uid, t)));
+      await Promise.all(TIERS.map(t => pullFromFirestore(uid, t)));
       setStep('pick-handle');
     } catch (e: unknown) {
       const msg = (e as { code?: string }).code;
