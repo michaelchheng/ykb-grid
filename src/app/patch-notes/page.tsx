@@ -11,6 +11,19 @@ interface PatchEntry {
 
 const PATCHES: PatchEntry[] = [
   {
+    version: '3.0',
+    date: 'May 2026',
+    label: 'AI Agents',
+    changes: [
+      { type: 'new',      text: 'Multi-agent question generation — three GPT-4o agents (StatsAgent → SelectionAgent → WriterAgent) now power the Gauntlet' },
+      { type: 'new',      text: 'StatsAgent scores every player\'s identifiability (0–100) before questions are built — no more random difficulty mismatches' },
+      { type: 'new',      text: 'SelectionAgent picks answer + distractors using tool calling, explicitly reasoning about era, stat similarity, and position' },
+      { type: 'new',      text: 'WriterAgent crafts flavor text without ever seeing the distractors — fully isolated context per agent' },
+      { type: 'improved', text: 'Questions now include a rationale explaining why the distractors were chosen' },
+      { type: 'improved', text: 'All three agent phases run in parallel across seasons for faster load times' },
+    ],
+  },
+  {
     version: '2.0',
     date: 'May 2026',
     label: 'Major Update',
@@ -68,7 +81,9 @@ export default function PatchNotes() {
                 {patch.label && (
                   <span className={[
                     'text-[10px] font-black tracking-widest px-2 py-0.5 rounded',
-                    patch.version === '2.0'
+                    patch.version === '3.0'
+                      ? 'bg-violet-500/20 text-violet-300 border border-violet-500/30'
+                      : patch.version === '2.0'
                       ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30'
                       : 'bg-white/8 text-white/40 border border-white/10',
                   ].join(' ')}>
