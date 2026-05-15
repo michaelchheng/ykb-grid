@@ -1,0 +1,8 @@
+#!/bin/sh
+echo "⏳ Running full build check before push..."
+npm run build
+if [ $? -ne 0 ]; then
+  echo "❌ Build failed. Fix errors before pushing."
+  exit 1
+fi
+echo "✅ Build passed — pushing to remote"

@@ -1,0 +1,8 @@
+#!/bin/sh
+echo "⏳ Type checking..."
+npx tsc --noEmit
+if [ $? -ne 0 ]; then
+  echo "❌ TypeScript errors found. Fix them before committing."
+  exit 1
+fi
+echo "✅ Types OK"
