@@ -1,12 +1,35 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { getGauntletQuestions, type GauntletQuestion } from '@/data/gauntlet';
 
 const ROUND_TOTAL = 10;
+const LOAD_MESSAGES = [
+  'Scouting the film room...',
+  'Running the stat models...',
+  'Picking your distractors...',
+  'Quality checking questions...',
+  'Almost ready...',
+];
 
 type Phase = 'playing' | 'answered' | 'done';
+type LoadState = 'loading' | 'ready' | 'error';
+
+interface AIGauntletQuestion {
+  id: string;
+  ppg: number;
+  rpg: number;
+  apg: number;
+  spg: number;
+  bpg: number;
+  season: string;
+  positionHint: string;
+  teamHint: string;
+  flavor: string;
+  difficulty: 'Easy' | 'Medium' | 'Hard' | 'Niche';
+  answer: string;
+  options: string[];
+}
 
 function StatBadge({ label, value, unit }: { label: string; value: number; unit?: string }) {
   return (
@@ -18,17 +41,65 @@ function StatBadge({ label, value, unit }: { label: string; value: number; unit?
 }
 
 export default function Gauntlet() {
-  const [phase, setPhase]     = useState<Phase>('playing');
-  const [questions, setQuestions] = useState<GauntletQuestion[]>([]);
-  const [qIndex, setQIndex]   = useState(0);
-  const [score, setScore]     = useState(0);
-  const [picked, setPicked]   = useState<string | null>(null);
-  const [mounted, setMounted] = useState(false);
-  const [isAdmin]         = useState(() => typeof window !== 'undefined' && localStorage.getItem('ykb_admin') === '1');
+  const [phase, setPhase]         = useState<Phase>('playing');
+  const [questions, setQuestions] = useState<AIGauntletQuestion[]>([]);
+  const [qIndex, setQIndex]       = useState(0);
+  const [score, setScore]         = useState(0);
+  const [picked, setPicked]       = useState<string | null>(null);
+  const [loadState, setLoadState] = useState<LoadState>('loading');
+  const [loadMsg, setLoadMsg]     = useState(LOAD_MESSAGES[0]);
+  const [isAdmin]                 = useState(() => typeof window !== 'undefined' && localStorage.getItem('ykb_admin') === '1');
+  const fetchedRef                = useRef(false);
 
+  async function fetchQuestions() {
+    setLoadState('loading');
+    setLoadMsg(LOAD_MESSAGES[0]);
+    setQIndex(0);
+    setScore(0);
+    setPicked(null);
+    setPhase('playing');
+
+    let msgIdx = 0;
+    const msgInterval = setInterval(() => {
+      msgIdx = Math.min(msgIdx + 1, LOAD_MESSAGES.length - 1);
+      setLoadMsg(LOAD_MESSAGES[msgIdx]);
+    }, 2500);
+
+    try {
+      const [easyRes, medRes, hardRes] = await Promise.all([
+        fetch('/api/generate-gauntlet', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ difficulty: 'Easy',   count: 3 }) }),
+        fetch('/api/generate-gauntlet', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ difficulty: 'Medium', count: 4 }) }),
+        fetch('/api/generate-gauntlet', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ difficulty: 'Hard',   count: 3 }) }),
+      ]);
+
+      if (!easyRes.ok || !medRes.ok || !hardRes.ok) throw new Error('API error');
+
+      const [easyData, medData, hardData] = await Promise.all([
+        easyRes.json(), medRes.json(), hardRes.json(),
+      ]);
+
+      const all: AIGauntletQuestion[] = [
+        ...(easyData.questions ?? []),
+        ...(medData.questions  ?? []),
+        ...(hardData.questions ?? []),
+      ].sort(() => Math.random() - 0.5);
+
+      if (all.length === 0) throw new Error('No questions returned');
+
+      setQuestions(all);
+      setLoadState('ready');
+    } catch {
+      setLoadState('error');
+    } finally {
+      clearInterval(msgInterval);
+    }
+  }
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
-    setQuestions(getGauntletQuestions(ROUND_TOTAL));
-    setMounted(true);
+    if (fetchedRef.current) return;
+    fetchedRef.current = true;
+    void fetchQuestions();
   }, []);
 
   const q = questions[qIndex];
@@ -43,10 +114,9 @@ export default function Gauntlet() {
   function next() {
     const nextIdx = qIndex + 1;
     const wasCorrect = picked === q?.answer;
-    const currentScore = score + (wasCorrect ? 1 : 0); // account for async state
+    const currentScore = score + (wasCorrect ? 1 : 0);
     if (nextIdx >= ROUND_TOTAL) {
-      // Save to localStorage
-      const total  = parseInt(localStorage.getItem('ykb_gauntlet_total') || '0', 10);
+      const total  = parseInt(localStorage.getItem('ykb_gauntlet_total')   || '0', 10);
       const cTotal = parseInt(localStorage.getItem('ykb_gauntlet_correct') || '0', 10);
       localStorage.setItem('ykb_gauntlet_total',   String(total + ROUND_TOTAL));
       localStorage.setItem('ykb_gauntlet_correct', String(cTotal + currentScore));
@@ -59,19 +129,32 @@ export default function Gauntlet() {
     }
   }
 
-  const diffColor = (d: GauntletQuestion['difficulty']) =>
+  const diffColor = (d: AIGauntletQuestion['difficulty']) =>
     d === 'Easy' ? '#34d399' : d === 'Medium' ? '#7dd3fc' : d === 'Hard' ? '#f97316' : '#c084fc';
 
-  if (!mounted || questions.length === 0) return (
-    <div className="min-h-screen bg-[#08080d] flex items-center justify-center">
+  // ── LOADING ───────────────────────────────────────────────────────────────
+  if (loadState === 'loading') return (
+    <div className="min-h-screen bg-[#08080d] flex flex-col items-center justify-center gap-4">
       <div className="w-6 h-6 rounded-full border-2 border-sky-400/30 border-t-sky-400 animate-spin" />
+      <p className="text-[11px] font-mono text-white/30 uppercase tracking-widest">{loadMsg}</p>
     </div>
   );
 
-  // ── DONE ─────────────────────────────────────────────────────────────────
+  // ── ERROR ─────────────────────────────────────────────────────────────────
+  if (loadState === 'error') return (
+    <div className="min-h-screen bg-[#08080d] flex flex-col items-center justify-center gap-4 text-center px-5">
+      <p className="text-white/40 text-sm">Couldn&apos;t generate questions. Check your connection.</p>
+      <button onClick={fetchQuestions}
+        className="px-6 py-3 rounded-xl bg-sky-400 text-black font-black text-sm hover:bg-sky-300 transition-colors">
+        Try Again
+      </button>
+    </div>
+  );
+
+  // ── DONE ──────────────────────────────────────────────────────────────────
   if (phase === 'done') {
     const finalScore = score;
-    const total = parseInt(localStorage.getItem('ykb_gauntlet_total') || '0', 10);
+    const total   = parseInt(localStorage.getItem('ykb_gauntlet_total')   || '0', 10);
     const correct = parseInt(localStorage.getItem('ykb_gauntlet_correct') || '0', 10);
     const allTimePct = total > 0 ? Math.round((correct / total) * 100) : 0;
     return (
@@ -95,13 +178,7 @@ export default function Gauntlet() {
             </div>
           </div>
           <div className="flex gap-3 justify-center">
-            <button onClick={() => {
-              setQuestions(getGauntletQuestions(ROUND_TOTAL));
-              setQIndex(0);
-              setScore(0);
-              setPicked(null);
-              setPhase('playing');
-            }}
+            <button onClick={() => { fetchedRef.current = false; void fetchQuestions(); }}
               className="px-6 py-3 rounded-xl bg-sky-400 text-black font-black text-sm hover:bg-sky-300 transition-colors">
               Play Again
             </button>
@@ -151,7 +228,7 @@ export default function Gauntlet() {
               style={{ color: diffColor(q.difficulty), border: `1px solid ${diffColor(q.difficulty)}40`, background: `${diffColor(q.difficulty)}10` }}>
               {q.difficulty}
             </span>
-            <span className="text-[10px] font-mono text-white/30">{q.season} · {q.conference} Conf · {q.positionHint}</span>
+            <span className="text-[10px] font-mono text-white/30">{q.season} · {q.positionHint}</span>
           </div>
 
           {/* Stat card */}
@@ -160,17 +237,14 @@ export default function Gauntlet() {
 
             <div className="grid grid-cols-3 gap-4 mb-4">
               <StatBadge label="PPG" value={q.ppg} />
-              {q.rpg !== undefined && <StatBadge label="RPG" value={q.rpg} />}
-              {q.apg !== undefined && <StatBadge label="APG" value={q.apg} />}
+              {q.rpg > 0 && <StatBadge label="RPG" value={q.rpg} />}
+              {q.apg > 0 && <StatBadge label="APG" value={q.apg} />}
             </div>
 
-            {(q.spg !== undefined || q.bpg !== undefined || q.fg_pct !== undefined || q.fg3_pct !== undefined || q.ft_pct !== undefined) && (
-              <div className="grid grid-cols-3 gap-3 pt-4 border-t border-white/8">
-                {q.spg !== undefined && <StatBadge label="SPG" value={q.spg} />}
-                {q.bpg !== undefined && <StatBadge label="BPG" value={q.bpg} />}
-                {q.fg_pct !== undefined && <StatBadge label="FG%" value={q.fg_pct} unit="%" />}
-                {q.fg3_pct !== undefined && <StatBadge label="3P%" value={q.fg3_pct} unit="%" />}
-                {q.ft_pct !== undefined && <StatBadge label="FT%" value={q.ft_pct} unit="%" />}
+            {(q.spg > 0 || q.bpg > 0) && (
+              <div className="grid grid-cols-2 gap-3 pt-4 border-t border-white/8">
+                {q.spg > 0 && <StatBadge label="SPG" value={q.spg} />}
+                {q.bpg > 0 && <StatBadge label="BPG" value={q.bpg} />}
               </div>
             )}
 
@@ -190,9 +264,9 @@ export default function Gauntlet() {
               let bg = 'rgba(255,255,255,0.03)';
               let textColor = 'rgba(255,255,255,0.8)';
               if (phase === 'answered') {
-                if (isCorrect) { borderColor = '#34d399'; bg = 'rgba(52,211,153,0.1)'; textColor = '#34d399'; }
+                if (isCorrect)     { borderColor = '#34d399'; bg = 'rgba(52,211,153,0.1)';   textColor = '#34d399'; }
                 else if (isPicked) { borderColor = '#f87171'; bg = 'rgba(248,113,113,0.08)'; textColor = '#f87171'; }
-                else { textColor = 'rgba(255,255,255,0.3)'; }
+                else               { textColor = 'rgba(255,255,255,0.3)'; }
               }
               return (
                 <button key={option}
