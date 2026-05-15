@@ -62,7 +62,7 @@ function formatValue(value: number, unit: string): string {
 }
 
 // ── Pool builder ───────────────────────────────────────────────────────────────
-function pickQuestion(streak: number, used: Set<string>, aiExtra: Question[], tier: 'easy'|'medium'|'hard'|'niche' = 'easy'): AnyQ | null {
+function pickQuestion(streak: number, used: Set<string>, aiExtra: Question[], tier: 'easy'|'medium'|'hard'|'niche' = 'easy', aiGauntlet: GauntletQuestion[] = []): AnyQ | null {
   const compDiff  = tier;
   const gauntDiff = tier === 'easy' ? 'Easy' : tier === 'medium' ? 'Medium' : tier === 'hard' ? 'Hard' : 'Niche';
   const draftDiff = gauntDiff;
@@ -86,8 +86,9 @@ function pickQuestion(streak: number, used: Set<string>, aiExtra: Question[], ti
   }
 
   if (qType === 'gauntlet') {
-    const pool = GAUNTLET_QUESTIONS.filter(q => q.difficulty === gauntDiff && !used.has(q.id));
-    const src  = pool.length > 0 ? pool : GAUNTLET_QUESTIONS.filter(q => q.difficulty === gauntDiff);
+    const aiGPool = aiGauntlet.filter(q => !used.has(q.id));
+    const staticUnused = GAUNTLET_QUESTIONS.filter(q => q.difficulty === gauntDiff && !used.has(q.id));
+    const src = aiGPool.length > 0 ? aiGPool : staticUnused.length > 0 ? staticUnused : GAUNTLET_QUESTIONS.filter(q => q.difficulty === gauntDiff);
     if (src.length === 0) {
       const staticPool = getQuestionsByDifficulty(compDiff as 'easy' | 'medium' | 'hard' | 'niche');
       const q = staticPool.filter(q => !used.has(q.id))[0] ?? staticPool[0];
@@ -129,6 +130,7 @@ export default function Home() {
   const [adPopup, setAdPopup]               = useState<'unlock'|'streak'|null>(null);
   const [, forceUpdate]                       = useState(0);
   const [aiBuffer, setAiBuffer]               = useState<Question[]>([]);
+  const [aiGauntletBuffer, setAiGauntletBuffer] = useState<GauntletQuestion[]>([]);
   const [fetchingAi, setFetchingAi]           = useState(false);
   const [loadingStep, setLoadingStep]         = useState<string | null>(null);
 
@@ -228,6 +230,20 @@ export default function Home() {
     }
   }, [fetchingAi]);
 
+  const fetchAiGauntlet = useCallback(async (difficulty: string) => {
+    try {
+      const diff = difficulty === 'easy' ? 'Easy' : difficulty === 'medium' ? 'Medium' : difficulty === 'hard' ? 'Hard' : 'Niche';
+      const res = await fetch('/api/generate-gauntlet', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ difficulty: diff, count: 6 }),
+      });
+      const data = await res.json();
+      const qs = (data.questions ?? []) as GauntletQuestion[];
+      if (qs.length > 0) setAiGauntletBuffer(prev => [...prev, ...qs]);
+    } catch { /* silent */ }
+  }, []);
+
   const compId = currentQ?.type === 'comparison' ? currentQ.data.id : null;
   useEffect(() => {
     if (compId) getVotes(compId);
@@ -252,11 +268,12 @@ export default function Home() {
     if (!isAdmin && isLockedOut(selectedTier)) { setGameState('locked'); return; }
     const s = getTodayStreak(selectedTier);
     setStreak(s);
-    const q = pickQuestion(s, usedIds, aiBuffer, selectedTier);
+    const q = pickQuestion(s, usedIds, aiBuffer, selectedTier, aiGauntletBuffer);
     setCurrentQ(q);
     resetAnswerState(q);
     setGameState('playing');
-    fetchAiQuestions(selectedTier); // always prefetch fresh batch
+    fetchAiQuestions(selectedTier);
+    fetchAiGauntlet(selectedTier);
   }
 
   function handleResult(correct: boolean) {
@@ -332,11 +349,16 @@ export default function Home() {
     if (currentQ?.id) newUsed.add(currentQ.id);
     setUsedIds(newUsed);
     try { localStorage.setItem(`ykb_used_${selectedTier}`, JSON.stringify([...newUsed])); } catch { }
-    const q = pickQuestion(streak, newUsed, aiBuffer, selectedTier);
+    // Drain used gauntlet question from AI buffer
+    if (currentQ?.type === 'gauntlet' && currentQ.id) {
+      setAiGauntletBuffer(prev => prev.filter(q => q.id !== currentQ.id));
+    }
+    const q = pickQuestion(streak, newUsed, aiBuffer, selectedTier, aiGauntletBuffer);
     setCurrentQ(q);
     resetAnswerState(q);
     setGameState('playing');
     if (aiBuffer.length < 3) fetchAiQuestions(selectedTier);
+    if (aiGauntletBuffer.length < 3) fetchAiGauntlet(selectedTier);
   }
 
 
