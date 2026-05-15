@@ -68,10 +68,10 @@ const SEASONS_BY_DIFF: Record<string, string[]> = {
 };
 
 const RANK_RANGE: Record<string, [number, number]> = {
-  Easy:   [0, 10],    // top 10 — recognizable stars
-  Medium: [5, 30],    // stars but not obvious
-  Hard:   [10, 60],   // solid starters, some obscure
-  Niche:  [20, 100],  // deep cuts
+  Easy:   [0, 40],    // recognizable starters, not just MVP-tier
+  Medium: [15, 70],   // solid starters, 2nd options
+  Hard:   [30, 120],  // role players, deep rotations
+  Niche:  [50, 200],  // deep cuts, forgotten guys
 };
 
 export async function POST(req: NextRequest) {
