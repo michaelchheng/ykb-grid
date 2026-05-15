@@ -74,8 +74,10 @@ async function fetchPlayerSeasonStats(season: string, baseUrl: string): Promise<
 }
 
 // ── Agent 1: StatsAgent ────────────────────────────────────────────────────────
-// Uses GPT-4o tool calling to score each player's recognizability.
-// The model reasons about era, starpower, and stat distinctiveness.
+// Scores each player's STAT DISTINCTIVENESS — how unique their numbers are
+// compared to league peers that season. High = very distinctive (outlier stats,
+// easy to identify). Low = generic / blends into the field (hard to identify).
+// This drives difficulty: Easy gets high-distinctiveness players, Niche gets low.
 async function runStatsAgent(
   players: RawPlayer[], season: string, difficulty: string, apiKey: string,
 ): Promise<ScoredPlayer[]> {
@@ -83,7 +85,7 @@ async function runStatsAgent(
     type: 'function' as const,
     function: {
       name: 'score_players',
-      description: 'Score each player\'s identifiability for a trivia game. Higher = more recognizable.',
+      description: 'Score each player\'s stat distinctiveness — how unique/identifiable their numbers are compared to peers in that season.',
       parameters: {
         type: 'object',
         properties: {
@@ -95,7 +97,7 @@ async function runStatsAgent(
                 playerName: { type: 'string' },
                 identifiabilityScore: {
                   type: 'number',
-                  description: '0-100. 90+=household name. 60-89=casual fan knows. 30-59=hardcore fan. <30=deep cut.',
+                  description: '0-100 based purely on how DISTINCTIVE the stat line is. 90+=extreme outlier (35ppg, triple-double avg, dominant in multiple categories). 60-89=clearly above average, recognizable combo. 30-59=solid starter but nothing that stands out. <30=generic role player stats, could be many people.',
                 },
               },
               required: ['playerName', 'identifiabilityScore'],
@@ -107,19 +109,20 @@ async function runStatsAgent(
     },
   }];
 
-  const playerList = players.slice(0, 40).map(p =>
-    `${p.playerName} (${p.team}, ${p.ppg}pts, ${p.rpg}reb, ${p.apg}ast, rank #${p.rank})`
+  // Include full stat line so model can assess distinctiveness from numbers alone
+  const playerList = players.slice(0, 50).map(p =>
+    `${p.playerName}: ${p.ppg}pts/${p.rpg}reb/${p.apg}ast/${p.spg}stl/${p.bpg}blk, ${p.gp}GP, rank #${p.rank}`
   ).join('\n');
 
   const res = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
     body: JSON.stringify({
-      model: 'gpt-4o', temperature: 0.3, max_tokens: 2000,
+      model: 'gpt-4o', temperature: 0.2, max_tokens: 2500,
       tools, tool_choice: { type: 'function', function: { name: 'score_players' } },
       messages: [{
         role: 'user',
-        content: `StatsAgent: Season ${season}, difficulty ${difficulty}.\nScore each player's identifiability to basketball fans.\n\n${playerList}\n\nCall score_players with your scores.`,
+        content: `StatsAgent: Season ${season}.\nScore each player's STAT DISTINCTIVENESS — how unique and identifiable their stat line is compared to peers this season. Base your score ONLY on the numbers (pts/reb/ast/stl/blk), NOT on name recognition. A player averaging 35ppg is an extreme outlier = 95. A player averaging 13/4/2 is generic = 25.\n\n${playerList}\n\nCall score_players.`,
       }],
     }),
     signal: AbortSignal.timeout(20000),
@@ -139,12 +142,12 @@ async function runStatsAgent(
 async function runSelectionAgent(
   scoredPool: ScoredPlayer[], difficulty: string, usedNames: Set<string>, apiKey: string,
 ): Promise<AgentSelection> {
-  // Non-overlapping bands — no shared score territory between tiers
+  // Stat-disparity bands: Easy = very distinctive outlier stats, Niche = generic blends-in stats
   const targetRange: Record<string, [number, number]> = {
-    Easy:   [72, 100], // household names — LeBron, Curry, KD tier
-    Medium: [45, 71],  // solid starters most fans know
-    Hard:   [20, 44],  // role players / deep cuts from recent eras
-    Niche:  [0,  19],  // obscure — only hardcore fans would know
+    Easy:   [72, 100], // extreme outlier stat lines — obvious who it is from numbers alone
+    Medium: [45, 71],  // above average but not unmistakable
+    Hard:   [20, 44],  // solid starter, generic enough to confuse
+    Niche:  [0,  19],  // completely average stats — could be any role player
   };
   const [minScore, maxScore] = targetRange[difficulty] ?? [0, 100];
   let eligible = scoredPool
@@ -196,7 +199,7 @@ async function runSelectionAgent(
       tools, tool_choice: { type: 'function', function: { name: 'select_question_players' } },
       messages: [{
         role: 'user',
-        content: `SelectionAgent: Difficulty=${difficulty} (target identifiabilityScore range ${JSON.stringify(targetRange[difficulty] ?? [0,100])}). You MUST pick an answerPlayer whose score falls within that range — do NOT pick a famous star for Hard/Niche, and do NOT pick an obscure player for Easy. Distractors must be same era, similar position and stat profile, plausible confusions.\n\nPool:\n${playerSummary}\n\nCall select_question_players.`,
+        content: `SelectionAgent: Difficulty=${difficulty} (stat-distinctiveness range ${JSON.stringify(targetRange[difficulty] ?? [0,100])}). Pick an answerPlayer whose stat line is appropriately distinctive for this difficulty — Easy means very unique outlier numbers, Niche means generic stats that could belong to many players. Distractors must have SIMILAR stat profiles to the answer (same position, similar ppg/rpg/apg range) so the question is actually hard.\n\nPool:\n${playerSummary}\n\nCall select_question_players.`,
       }],
     }),
     signal: AbortSignal.timeout(15000),
@@ -269,11 +272,11 @@ const TEAM_HINTS: Record<string, string> = {
 };
 
 const SEASONS_BY_DIFF: Record<string, string[]> = {
-  // Non-overlapping era pools — each tier owns its own seasons
-  Easy:   ['2023-24','2022-23','2021-22','2020-21','2019-20','2018-19','2017-18','2016-17'],
-  Medium: ['2015-16','2014-15','2013-14','2012-13','2011-12','2010-11','2009-10'],
-  Hard:   ['2008-09','2007-08','2006-07','2005-06','2004-05','2003-04','2002-03'],
-  Niche:  ['2001-02','2000-01','1999-00','1998-99','1997-98','1996-97','1995-96','1994-95'],
+  // All tiers draw from the same broad pool — difficulty comes from stat disparity, not era
+  Easy:   ['2023-24','2022-23','2021-22','2020-21','2019-20','2018-19','2017-18','2016-17','2015-16','2014-15','2013-14','2012-13'],
+  Medium: ['2023-24','2022-23','2021-22','2020-21','2019-20','2018-19','2017-18','2016-17','2015-16','2014-15','2013-14','2012-13'],
+  Hard:   ['2023-24','2022-23','2021-22','2020-21','2019-20','2018-19','2017-18','2016-17','2015-16','2014-15','2013-14','2012-13','2010-11','2008-09','2006-07','2004-05','2002-03'],
+  Niche:  ['2023-24','2022-23','2021-22','2020-21','2019-20','2018-19','2017-18','2016-17','2015-16','2014-15','2013-14','2012-13','2010-11','2008-09','2006-07','2004-05','2002-03','2000-01','1998-99','1996-97'],
 };
 
 // ── Main Route ────────────────────────────────────────────────────────────────
