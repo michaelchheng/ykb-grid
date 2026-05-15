@@ -168,6 +168,48 @@ async function fetchLeaders(
   return leaders;
 }
 
+// ── Semantic similarity (for niche tier) ──────────────────────────────────────
+// Build a stat vector per player from the leaderboard and find the pair
+// whose vectors are most similar — these are the genuinely confusable players.
+function cosineSim(a: number[], b: number[]): number {
+  let dot = 0, normA = 0, normB = 0;
+  for (let i = 0; i < a.length; i++) {
+    dot   += a[i] * b[i];
+    normA += a[i] * a[i];
+    normB += b[i] * b[i];
+  }
+  return normA && normB ? dot / (Math.sqrt(normA) * Math.sqrt(normB)) : 0;
+}
+
+function pickSemanticNichePair(leaders: NBALeaderRow[]): [NBALeaderRow, NBALeaderRow] | null {
+  // Work within the obscure zone: ranks 20-90 to avoid obvious stars
+  const pool = leaders.slice(20, Math.min(90, leaders.length));
+  if (pool.length < 4) return null;
+
+  // Stat vector = [stat_normalized, gp_normalized, rank_normalized]
+  const maxStat = Math.max(...pool.map(p => p.stat)) || 1;
+  const maxGp   = Math.max(...pool.map(p => p.gp))   || 1;
+  const vecs    = pool.map(p => [
+    p.stat / maxStat,
+    p.gp   / maxGp,
+    (pool.length - pool.indexOf(p)) / pool.length, // inverse rank
+  ]);
+
+  // Random seed player, find most-similar neighbor
+  const seedIdx = Math.floor(Math.random() * pool.length);
+  let bestSim = -1, bestIdx = -1;
+  for (let i = 0; i < pool.length; i++) {
+    if (i === seedIdx) continue;
+    const sim = cosineSim(vecs[seedIdx], vecs[i]);
+    if (sim > bestSim) { bestSim = sim; bestIdx = i; }
+  }
+  if (bestIdx === -1) return null;
+
+  const a = pool[seedIdx], b = pool[bestIdx];
+  if (a.stat === b.stat) return null;
+  return Math.random() > 0.5 ? [a, b] : [b, a];
+}
+
 // ── Pair picker ────────────────────────────────────────────────────────────────
 function pickPair(
   leaders: NBALeaderRow[],
@@ -175,28 +217,22 @@ function pickPair(
 ): [NBALeaderRow, NBALeaderRow] | null {
   if (leaders.length < 10) return null;
   const r = Math.random;
-  let idxA: number, idxB: number;
 
+  if (difficulty === 'niche') return pickSemanticNichePair(leaders);
+
+  let idxA: number, idxB: number;
   switch (difficulty) {
     case 'easy':
-      // Top star vs very low-ranked — massive obvious gap
       idxA = Math.floor(r() * 3);
       idxB = Math.min(leaders.length - 1, 40 + Math.floor(r() * 30));
       break;
     case 'medium':
-      // Top 10 vs rank 20-40 — noticeable gap but not obvious
       idxA = 2 + Math.floor(r() * 8);
       idxB = Math.min(leaders.length - 1, 20 + Math.floor(r() * 20));
       break;
     case 'hard':
-      // Close to each other in the top 20 — tight race
       idxA = Math.floor(r() * 15);
       idxB = idxA + 1 + Math.floor(r() * 3);
-      break;
-    case 'niche':
-      // Deep bench obscure players rank 25-80, adjacent so stats are near-identical
-      idxA = Math.min(leaders.length - 3, 25 + Math.floor(r() * 55));
-      idxB = idxA + 1;
       break;
     default:
       idxA = 0; idxB = 5;
@@ -352,7 +388,7 @@ Return ONLY the raw JSON array — no markdown fences, no explanation.`;
 
     const parsed: Record<string, unknown>[] = JSON.parse(raw);
 
-    // Enforce real API values — GPT cannot drift numbers
+    // ── Enforce real API values ────────────────────────────────────────────────
     const now = Date.now();
     const hardened = parsed.map((q, i) => {
       const m = matchups[i];
@@ -360,19 +396,115 @@ Return ONLY the raw JSON array — no markdown fences, no explanation.`;
       return {
         ...q,
         id: makeId(m.playerA, m.playerB, m.strategy.statCategory, m.season, now + i),
-        valueA: m.playerA.stat,  // ← always from NBA API
-        valueB: m.playerB.stat,  // ← always from NBA API
+        valueA: m.playerA.stat,
+        valueB: m.playerB.stat,
         _source: 'nba_api',
       };
     });
 
-    const existing = qCache.get(cacheKey) ?? [];
-    qCache.set(cacheKey, [...existing, ...hardened]);
+    // ── Eval loop: score each flavor with gpt-4o-mini, regenerate weak ones ───
+    const evaluated = await evalAndRepair(hardened, matchups, apiKey);
 
-    return Response.json({ questions: hardened, source: 'nba_api+gpt', matchupsUsed: matchups.length });
+    const existing = qCache.get(cacheKey) ?? [];
+    qCache.set(cacheKey, [...existing, ...evaluated]);
+
+    return Response.json({ questions: evaluated, source: 'nba_api+gpt+eval', matchupsUsed: matchups.length });
   } catch (e) {
     console.error('Question generation failed:', e);
     return Response.json({ questions: [], error: String(e) }, { status: 200 });
+  }
+}
+
+// ── Eval + Repair ──────────────────────────────────────────────────────────────
+// Scores every flavor line 1-5. Any scoring < 3 gets a regeneration pass.
+// Uses gpt-4o-mini so the cost is negligible (~$0.00015 per eval batch).
+async function evalAndRepair(
+  questions: Record<string, unknown>[],
+  matchups: MatchupData[],
+  apiKey: string,
+): Promise<Record<string, unknown>[]> {
+  const EVAL_SYSTEM = `You are a quality evaluator for NBA trivia flavor text.
+Score each flavor string 1-5 where:
+5 = specific, vivid, names both players, cites exact numbers, genuine basketball insight
+3 = acceptable but generic or missing context
+1 = vague, repetitive, missing player names or numbers, sounds AI-generated
+Return ONLY a JSON array of integers matching the input array length.`;
+
+  const flavors = questions.map(q => String(q.flavor ?? ''));
+  const evalPrompt = `Score these ${flavors.length} flavor strings:\n${flavors.map((f, i) => `${i + 1}. ${f}`).join('\n')}`;
+
+  try {
+    const evalRes = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        temperature: 0,
+        max_tokens: 200,
+        messages: [
+          { role: 'system', content: EVAL_SYSTEM },
+          { role: 'user',   content: evalPrompt },
+        ],
+      }),
+      signal: AbortSignal.timeout(10000),
+    });
+    if (!evalRes.ok) return questions; // eval failed — ship originals
+
+    const evalData = await evalRes.json();
+    const scores: number[] = JSON.parse(
+      (evalData.choices?.[0]?.message?.content ?? '[]')
+        .trim().replace(/^```json?\s*/i, '').replace(/```\s*$/i, '')
+    );
+
+    // Find which need regeneration
+    const weakIdx = scores.map((s, i) => s < 3 ? i : -1).filter(i => i >= 0);
+    if (weakIdx.length === 0) return questions;
+
+    // Regenerate only the weak ones
+    const repairContext = weakIdx
+      .map(i => {
+        const m = matchups[i];
+        return m
+          ? `MATCHUP ${i + 1}: ${m.strategy.label} — ${m.season}\n` +
+            `  A: ${m.playerA.playerName} (${m.playerA.team}) — ${m.playerA.stat} ${m.strategy.unit}\n` +
+            `  B: ${m.playerB.playerName} (${m.playerB.team}) — ${m.playerB.stat} ${m.strategy.unit}\n` +
+            `  Previous (score ${scores[i]}/5): "${questions[i].flavor}" — rewrite this, be more specific`
+          : '';
+      })
+      .join('\n\n');
+
+    const repairRes = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+      body: JSON.stringify({
+        model: 'gpt-4o',
+        temperature: 0.9,
+        max_tokens: 800,
+        messages: [
+          { role: 'system', content: SYSTEM_PROMPT },
+          { role: 'user', content: `Rewrite only these ${weakIdx.length} flavor strings. Return a JSON array of strings (just the flavor text, same order).\n\n${repairContext}` },
+        ],
+      }),
+      signal: AbortSignal.timeout(15000),
+    });
+
+    if (!repairRes.ok) return questions;
+    const repairData = await repairRes.json();
+    const repaired: string[] = JSON.parse(
+      (repairData.choices?.[0]?.message?.content ?? '[]')
+        .trim().replace(/^```json?\s*/i, '').replace(/```\s*$/i, '')
+    );
+
+    // Splice repaired flavors back in
+    const result = [...questions];
+    weakIdx.forEach((origIdx, repairPos) => {
+      if (repaired[repairPos]) {
+        result[origIdx] = { ...result[origIdx], flavor: repaired[repairPos], _eval_repaired: true };
+      }
+    });
+    return result;
+  } catch {
+    return questions; // any eval failure — ship originals
   }
 }
 

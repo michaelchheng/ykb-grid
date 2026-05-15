@@ -135,6 +135,7 @@ export default function Home() {
   const [, forceUpdate]                       = useState(0);
   const [aiBuffer, setAiBuffer]               = useState<Question[]>([]);
   const [fetchingAi, setFetchingAi]           = useState(false);
+  const [loadingStep, setLoadingStep]         = useState<string | null>(null);
 
   const [answered, setAnswered]               = useState<'A' | 'B' | null>(null);
   const [gauntletPick, setGauntletPick]       = useState<string | null>(null);
@@ -182,35 +183,54 @@ export default function Home() {
   const fetchAiQuestions = useCallback(async (difficulty: string) => {
     if (fetchingAi) return;
     setFetchingAi(true);
+    setLoadingStep('Connecting...');
     try {
-      const res = await fetch('/api/generate-question', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ difficulty, count: 8 }),
+      await new Promise<void>((resolve, reject) => {
+        const es = new EventSource(`/api/generate-question/stream?difficulty=${difficulty}&count=8`);
+
+        es.addEventListener('step', (e) => {
+          const d = JSON.parse(e.data) as { id: string; msg: string };
+          setLoadingStep(d.msg);
+        });
+
+        es.addEventListener('result', (e) => {
+          es.close();
+          const data = JSON.parse(e.data) as { questions: Record<string, unknown>[] };
+          const qs: Question[] = (data.questions ?? []).map((q) => ({
+            id: (() => {
+              const a = String((q.playerA as Record<string, unknown>)?.name ?? '');
+              const b = String((q.playerB as Record<string, unknown>)?.name ?? '');
+              const s = String(q.label ?? '');
+              return `${a}|${b}|${s}`.toLowerCase().replace(/\s+/g, '_');
+            })(),
+            era: (q.era as 'classic' | 'modern') ?? 'modern',
+            category: (q.category as Question['category']) ?? 'points',
+            label: String(q.label ?? ''),
+            subLabel: String(q.subLabel ?? ''),
+            flavor: String(q.flavor ?? ''),
+            playerA: { id: String((q.playerA as Record<string, unknown>)?.id ?? ''), name: String((q.playerA as Record<string, unknown>)?.name ?? ''), context: String((q.playerA as Record<string, unknown>)?.label ?? ''), teamColor: String((q.playerA as Record<string, unknown>)?.color ?? '#888') },
+            playerB: { id: String((q.playerB as Record<string, unknown>)?.id ?? ''), name: String((q.playerB as Record<string, unknown>)?.name ?? ''), context: String((q.playerB as Record<string, unknown>)?.label ?? ''), teamColor: String((q.playerB as Record<string, unknown>)?.color ?? '#888') },
+            valueA: Number(q.valueA ?? 0),
+            valueB: Number(q.valueB ?? 0),
+            unit: String(q.unit ?? ''),
+            difficulty: (q.difficulty as Question['difficulty']) ?? 'medium',
+          })).filter((q: Question) => q.valueA !== q.valueB && q.playerA.name && q.playerB.name);
+          if (qs.length > 0) setAiBuffer(prev => [...prev, ...qs]);
+          resolve();
+        });
+
+        es.addEventListener('error', () => {
+          es.close();
+          reject(new Error('SSE error'));
+        });
+
+        // Safety timeout
+        setTimeout(() => { es.close(); resolve(); }, 50000);
       });
-      if (!res.ok) return;
-      const data = await res.json();
-      const qs: Question[] = (data.questions ?? []).map((q: Record<string, unknown>) => ({
-        id: (() => {
-          const a = String((q.playerA as Record<string, unknown>)?.name ?? '');
-          const b = String((q.playerB as Record<string, unknown>)?.name ?? '');
-          const s = String(q.label ?? '');
-          return `${a}|${b}|${s}`.toLowerCase().replace(/\s+/g, '_');
-        })(),
-        era: (q.era as 'classic' | 'modern') ?? 'modern',
-        category: (q.category as Question['category']) ?? 'points',
-        label: String(q.label ?? ''),
-        subLabel: String(q.subLabel ?? ''),
-        flavor: String(q.flavor ?? ''),
-        playerA: { id: String((q.playerA as Record<string, unknown>)?.id ?? ''), name: String((q.playerA as Record<string, unknown>)?.name ?? ''), context: String((q.playerA as Record<string, unknown>)?.label ?? ''), teamColor: String((q.playerA as Record<string, unknown>)?.color ?? '#888') },
-        playerB: { id: String((q.playerB as Record<string, unknown>)?.id ?? ''), name: String((q.playerB as Record<string, unknown>)?.name ?? ''), context: String((q.playerB as Record<string, unknown>)?.label ?? ''), teamColor: String((q.playerB as Record<string, unknown>)?.color ?? '#888') },
-        valueA: Number(q.valueA ?? 0),
-        valueB: Number(q.valueB ?? 0),
-        unit: String(q.unit ?? ''),
-        difficulty: (q.difficulty as Question['difficulty']) ?? 'medium',
-      })).filter((q: Question) => q.valueA !== q.valueB && q.playerA.name && q.playerB.name);
-      if (qs.length > 0) setAiBuffer(prev => [...prev, ...qs]);
-    } catch { /* silent */ } finally { setFetchingAi(false); }
+    } catch { /* silent */ } finally {
+      setFetchingAi(false);
+      setLoadingStep(null);
+    }
   }, [fetchingAi]);
 
   const compId = currentQ?.type === 'comparison' ? currentQ.data.id : null;
@@ -430,10 +450,19 @@ export default function Home() {
               <p className="text-white/40 text-sm">You got one wrong. Come back tomorrow.</p>
             </div>
           ) : (
-            <button onClick={startGame}
-              className="w-full py-5 rounded-2xl bg-yellow-400 text-black font-black text-xl hover:bg-yellow-300 transition-all active:scale-[0.98] mb-8 shadow-lg shadow-yellow-400/20">
-              {todayS > 0 ? `Continue — ${todayS} 🔥` : 'Start'}
-            </button>
+            <>
+              <button onClick={startGame}
+                className="w-full py-5 rounded-2xl bg-yellow-400 text-black font-black text-xl hover:bg-yellow-300 transition-all active:scale-[0.98] shadow-lg shadow-yellow-400/20"
+                style={{ marginBottom: fetchingAi && loadingStep ? '12px' : '32px' }}>
+                {todayS > 0 ? `Continue — ${todayS} 🔥` : 'Start'}
+              </button>
+              {fetchingAi && loadingStep && (
+                <div className="flex items-center justify-center gap-2 mb-8 text-xs text-white/40 font-mono">
+                  <span className="w-1.5 h-1.5 rounded-full bg-yellow-400 animate-pulse shrink-0" />
+                  {loadingStep}
+                </div>
+              )}
+            </>
           )}
 
 
