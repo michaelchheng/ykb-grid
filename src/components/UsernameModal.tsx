@@ -183,7 +183,7 @@ export default function UsernameModal({ onSubmit }: Props) {
               <p className="text-white/30 text-xs">
                 {mode === 'signup' ? 'Already have an account?' : "Don't have one?"}{' '}
                 <button onClick={() => { setMode(mode === 'signup' ? 'login' : 'signup'); setError(''); }}
-                  className="text-yellow-400 hover:text-yellow-300 underline">
+                  className="text-violet-400 hover:text-violet-300 underline">
                   {mode === 'signup' ? 'Log in' : 'Sign up'}
                 </button>
               </p>

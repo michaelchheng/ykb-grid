@@ -56,7 +56,7 @@ const PATCHES: PatchEntry[] = [
 const TYPE_STYLE: Record<string, { dot: string; label: string }> = {
   new:      { dot: 'bg-emerald-400',   label: 'NEW'      },
   improved: { dot: 'bg-blue-400',      label: 'IMPROVED' },
-  fixed:    { dot: 'bg-yellow-400',    label: 'FIXED'    },
+  fixed:    { dot: 'bg-violet-500',    label: 'FIXED'    },
 };
 
 export default function PatchNotes() {
@@ -103,7 +103,7 @@ export default function PatchNotes() {
                         <span className={`w-1.5 h-1.5 rounded-full ${s.dot} mt-[3px]`} />
                         <span className={`text-[9px] font-black tracking-widest w-[54px] ${
                           c.type === 'new' ? 'text-emerald-400' :
-                          c.type === 'improved' ? 'text-blue-400' : 'text-yellow-400'
+                          c.type === 'improved' ? 'text-blue-400' : 'text-violet-400'
                         }`}>{s.label}</span>
                       </div>
                       <p className="text-sm text-white/70 leading-relaxed">{c.text}</p>

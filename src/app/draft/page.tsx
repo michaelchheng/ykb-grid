@@ -80,7 +80,7 @@ export default function DraftOrder() {
 
   if (!mounted || challenges.length === 0) return (
     <div className="min-h-screen bg-[#08080d] flex items-center justify-center">
-      <div className="w-6 h-6 rounded-full border-2 border-yellow-400/30 border-t-yellow-400 animate-spin" />
+      <div className="w-6 h-6 rounded-full border-2 border-violet-500/30 border-t-violet-500 animate-spin" />
     </div>
   );
 
@@ -106,7 +106,7 @@ export default function DraftOrder() {
               setRoundScore(0);
               if (cs[0]) resetForChallenge(cs[0]);
             }}
-              className="px-6 py-3 rounded-xl bg-yellow-400 text-black font-black text-sm hover:bg-yellow-300 transition-colors">
+              className="px-6 py-3 rounded-xl bg-violet-500 text-black font-black text-sm hover:bg-violet-400 transition-colors">
               Play Again
             </button>
             <Link href="/" className="px-6 py-3 rounded-xl border border-white/15 text-white/50 text-sm font-mono hover:text-white hover:border-white/30 transition-colors">
@@ -125,11 +125,11 @@ export default function DraftOrder() {
       {/* Header */}
       <div className="border-b border-white/[0.06] px-5 py-3 flex items-center justify-between">
         <Link href="/" className="text-white/30 hover:text-white/60 transition-colors text-xs font-mono">← Hub</Link>
-        <p className="text-[10px] font-mono text-yellow-400/70 uppercase tracking-widest">Draft Order</p>
+        <p className="text-[10px] font-mono text-violet-400/70 uppercase tracking-widest">Draft Order</p>
         <div className="flex items-center gap-2">
           {isAdmin && phase === 'ranking' && (
             <button onClick={() => { setRanking(c.players); setPhase('revealed'); }}
-              className="text-[9px] font-mono text-yellow-400/60 border border-yellow-400/30 rounded px-1.5 py-0.5 hover:bg-yellow-400/10 transition-colors">
+              className="text-[9px] font-mono text-violet-400/60 border border-violet-500/30 rounded px-1.5 py-0.5 hover:bg-violet-500/10 transition-colors">
               SKIP
             </button>
           )}
@@ -236,7 +236,7 @@ export default function DraftOrder() {
               </p>
               <p className="text-white/35 text-xs italic mb-4">&ldquo;{c.flavor}&rdquo;</p>
               <button onClick={next}
-                className="px-8 py-3 rounded-xl bg-yellow-400 text-black font-black text-sm hover:bg-yellow-300 transition-colors active:scale-[0.98]">
+                className="px-8 py-3 rounded-xl bg-violet-500 text-black font-black text-sm hover:bg-violet-400 transition-colors active:scale-[0.98]">
                 {cIndex + 1 >= ROUND_TOTAL ? 'See Results' : 'Next →'}
               </button>
             </div>

@@ -447,7 +447,7 @@ export default function Home() {
             </button>
             {isAdmin && (
               <button onClick={() => setShowAdminDrawer(true)}
-                className="text-[9px] font-sans text-yellow-400/60 border border-yellow-400/30 rounded px-1.5 py-0.5 hover:bg-yellow-400/10 transition-colors">
+                className="text-[9px] font-sans text-violet-400/60 border border-violet-500/30 rounded px-1.5 py-0.5 hover:bg-violet-500/10 transition-colors">
                 ADMIN
               </button>
             )}
@@ -505,13 +505,13 @@ export default function Home() {
           ) : (
             <>
               <button onClick={startGame}
-                className="w-full py-5 rounded-2xl bg-yellow-400 text-black font-black text-xl hover:bg-yellow-300 transition-all active:scale-[0.98] shadow-lg shadow-yellow-400/20"
+                className="w-full py-5 rounded-2xl bg-violet-500 text-black font-black text-xl hover:bg-violet-400 transition-all active:scale-[0.98] shadow-lg shadow-violet-500/20"
                 style={{ marginBottom: fetchingAi && loadingStep ? '12px' : '32px' }}>
                 {todayS > 0 ? `Continue — ${todayS} 🔥` : 'Start'}
               </button>
               {fetchingAi && loadingStep && (
                 <div className="flex items-center justify-center gap-2 mb-8 text-xs text-white/40 font-mono">
-                  <span className="w-1.5 h-1.5 rounded-full bg-yellow-400 animate-pulse shrink-0" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-violet-500 animate-pulse shrink-0" />
                   {loadingStep}
                 </div>
               )}
@@ -673,7 +673,7 @@ export default function Home() {
           <div className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm" onClick={() => setShowAdminDrawer(false)} />
           <div className="fixed top-0 right-0 h-full w-72 z-50 bg-[#0f0f18] border-l border-white/10 flex flex-col shadow-2xl">
             <div className="flex items-center justify-between px-5 py-4 border-b border-white/8">
-              <p className="text-[10px] font-sans text-yellow-400/60 uppercase tracking-widest">Admin</p>
+              <p className="text-[10px] font-sans text-violet-400/60 uppercase tracking-widest">Admin</p>
               <button onClick={() => setShowAdminDrawer(false)} className="text-white/30 hover:text-white/70 text-lg">&#x2715;</button>
             </div>
             <div className="flex-1 px-5 py-6 space-y-3">
@@ -772,7 +772,7 @@ export default function Home() {
           </div>
         )}
         <button onClick={() => watchAd('streak')}
-          className="w-full py-4 rounded-2xl bg-yellow-400 text-black font-black text-base hover:bg-yellow-300 transition-all active:scale-[0.98] mb-3 shadow-lg shadow-yellow-400/20">
+          className="w-full py-4 rounded-2xl bg-violet-500 text-black font-black text-base hover:bg-violet-400 transition-all active:scale-[0.98] mb-3 shadow-lg shadow-violet-500/20">
           📺 Watch an ad — save your streak
         </button>
         <p className="text-white/25 text-xs mb-6">One lifeline per day. Resets at midnight.</p>
@@ -783,7 +783,7 @@ export default function Home() {
             Hub
           </button>
           <a href="/leaderboard"
-            className="px-6 py-3 rounded-xl bg-yellow-400 text-black font-black text-sm hover:bg-yellow-300 transition-colors">
+            className="px-6 py-3 rounded-xl bg-violet-500 text-black font-black text-sm hover:bg-violet-400 transition-colors">
             Leaderboard
           </a>
         </div>
@@ -800,7 +800,7 @@ export default function Home() {
                 : 'Once ads are live, watching one will unlock your tier.'}
             </p>
             <button onClick={() => setAdPopup(null)}
-              className="w-full py-3 rounded-xl bg-yellow-400 text-black font-black text-sm hover:bg-yellow-300 transition-all">
+              className="w-full py-3 rounded-xl bg-violet-500 text-black font-black text-sm hover:bg-violet-400 transition-all">
               Got it
             </button>
           </div>
@@ -812,7 +812,7 @@ export default function Home() {
   // ── PLAYING / CORRECT ─────────────────────────────────────────────────────
   if (!currentQ) return (
     <div className="min-h-screen bg-[#08080d] flex items-center justify-center">
-      <div className="w-6 h-6 rounded-full border-2 border-yellow-400/30 border-t-yellow-400 animate-spin" />
+      <div className="w-6 h-6 rounded-full border-2 border-violet-500/30 border-t-violet-500 animate-spin" />
     </div>
   );
 
@@ -832,7 +832,7 @@ export default function Home() {
         <div className="flex items-center gap-1.5">
           {isAdmin && !isRevealed && (
             <button onClick={() => handleResult(true)}
-              className="text-[9px] font-sans text-yellow-400/60 border border-yellow-400/30 rounded px-1.5 py-0.5 hover:bg-yellow-400/10 transition-colors mr-1">
+              className="text-[9px] font-sans text-violet-400/60 border border-violet-500/30 rounded px-1.5 py-0.5 hover:bg-violet-500/10 transition-colors mr-1">
               SKIP
             </button>
           )}
@@ -965,7 +965,7 @@ export default function Home() {
             return (
               <>
                 <div className="mb-4">
-                  <p className="text-[10px] font-sans text-yellow-400/60 uppercase tracking-widest mb-1">All 5 correct to continue</p>
+                  <p className="text-[10px] font-sans text-violet-400/60 uppercase tracking-widest mb-1">All 5 correct to continue</p>
                   <p className="font-black text-xl">{c.statLabel}</p>
                   <p className="text-white/35 text-xs font-sans mt-0.5">{c.season} &middot; Highest &rarr; Lowest</p>
                 </div>
@@ -1032,7 +1032,7 @@ export default function Home() {
           {isRevealed && (
             <div className="mt-6 text-center">
               <button onClick={nextQuestion}
-                className="px-10 py-3.5 rounded-xl bg-yellow-400 text-black font-black text-sm hover:bg-yellow-300 transition-colors active:scale-[0.98]">
+                className="px-10 py-3.5 rounded-xl bg-violet-500 text-black font-black text-sm hover:bg-violet-400 transition-colors active:scale-[0.98]">
                 Next
               </button>
             </div>

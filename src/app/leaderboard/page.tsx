@@ -28,7 +28,7 @@ const TIERS: { key: Tier; label: string; color: string; desc: string }[] = [
 
 function RankBadge({ rank }: { rank: number }) {
   const base = 'w-7 h-7 rounded-lg flex items-center justify-center text-xs font-black tabular-nums shrink-0';
-  if (rank === 1) return <span className={`${base} bg-yellow-400/15 text-yellow-300`}>1</span>;
+  if (rank === 1) return <span className={`${base} bg-violet-500/15 text-violet-300`}>1</span>;
   if (rank === 2) return <span className={`${base} bg-slate-400/10  text-slate-300`}>2</span>;
   if (rank === 3) return <span className={`${base} bg-orange-700/15 text-orange-400`}>3</span>;
   return <span className={`${base} bg-white/4 text-white/25`}>{rank}</span>;
@@ -109,7 +109,7 @@ export default function LeaderboardPage() {
         {/* Rows */}
         {loading ? (
           <div className="flex justify-center py-16">
-            <div className="w-5 h-5 rounded-full border-2 border-yellow-400/30 border-t-yellow-400 animate-spin" />
+            <div className="w-5 h-5 rounded-full border-2 border-violet-500/30 border-t-violet-500 animate-spin" />
           </div>
         ) : sorted.length === 0 ? (
           <div className="text-center py-16">

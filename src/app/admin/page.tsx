@@ -100,17 +100,17 @@ export default function AdminPage() {
 
           {/* Header */}
           <div className="text-center">
-            <p className="text-yellow-400/60 text-[10px] font-mono uppercase tracking-widest mb-2">Admin Panel</p>
-            <h1 className="text-2xl font-black">You Know Ball <span className="text-yellow-400">Admin</span></h1>
+            <p className="text-violet-400/60 text-[10px] font-mono uppercase tracking-widest mb-2">Admin Panel</p>
+            <h1 className="text-2xl font-black">You Know Ball <span className="text-violet-400">Admin</span></h1>
           </div>
 
           {/* Status bar */}
-          <div className="rounded-2xl border border-yellow-400/20 bg-yellow-400/5 p-4 flex items-center justify-between">
+          <div className="rounded-2xl border border-violet-500/20 bg-violet-500/5 p-4 flex items-center justify-between">
             <div>
-              <p className="text-yellow-400 text-xs font-mono font-bold uppercase tracking-wider">Admin Mode Active</p>
+              <p className="text-violet-400 text-xs font-mono font-bold uppercase tracking-wider">Admin Mode Active</p>
               <p className="text-white/40 text-xs mt-0.5">Lockouts bypassed on all modes</p>
             </div>
-            <Link href="/" className="text-yellow-400 text-xs font-bold border border-yellow-400/30 rounded-lg px-3 py-1.5 hover:bg-yellow-400/10 transition-colors">
+            <Link href="/" className="text-violet-400 text-xs font-bold border border-violet-500/30 rounded-lg px-3 py-1.5 hover:bg-violet-500/10 transition-colors">
               Play →
             </Link>
           </div>
@@ -119,7 +119,7 @@ export default function AdminPage() {
           <div className="flex gap-1 rounded-xl border border-white/8 bg-white/[0.03] p-1">
             {(['tools', 'pipeline', 'feedback'] as const).map(tab => (
               <button key={tab} onClick={() => setActiveTab(tab)}
-                className={['flex-1 py-2 rounded-lg text-xs font-bold capitalize transition-colors', activeTab === tab ? 'bg-yellow-400 text-black' : 'text-white/40 hover:text-white/70'].join(' ')}>
+                className={['flex-1 py-2 rounded-lg text-xs font-bold capitalize transition-colors', activeTab === tab ? 'bg-violet-500 text-black' : 'text-white/40 hover:text-white/70'].join(' ')}>
                 {tab === 'pipeline' ? 'AI Pipeline' : tab}
               </button>
             ))}
@@ -182,7 +182,7 @@ export default function AdminPage() {
                         <div className="flex items-center justify-between">
                           <span className="text-white/70 text-xs font-mono">{new Date(log.timestamp).toLocaleString()}</span>
                           <div className="flex gap-2">
-                            <span className="text-yellow-400 text-[10px] font-bold uppercase">{log.difficulty}</span>
+                            <span className="text-violet-400 text-[10px] font-bold uppercase">{log.difficulty}</span>
                             <span className="text-white/40 text-[10px] font-mono">${log.totalCostUsd?.toFixed(4)}</span>
                           </div>
                         </div>
@@ -243,7 +243,7 @@ export default function AdminPage() {
                           <p className="text-white/25 text-[10px] font-mono">{q.difficulty} · score {q.identifiabilityScore}</p>
                         </div>
                         <div className="flex gap-3 text-[10px] font-mono shrink-0">
-                          <span className={q.accuracy >= 60 ? 'text-green-400' : q.accuracy >= 35 ? 'text-yellow-400' : 'text-red-400'}>
+                          <span className={q.accuracy >= 60 ? 'text-green-400' : q.accuracy >= 35 ? 'text-violet-400' : 'text-red-400'}>
                             {q.accuracy}%
                           </span>
                           <span className="text-white/30">{q.total} plays</span>
@@ -283,7 +283,7 @@ export default function AdminPage() {
             onChange={e => setUsername(e.target.value)}
             placeholder="Username"
             autoComplete="username"
-            className="w-full bg-white/[0.04] border border-white/12 rounded-xl px-4 py-3.5 text-white text-sm placeholder:text-white/25 outline-none focus:border-yellow-400/40 transition-colors"
+            className="w-full bg-white/[0.04] border border-white/12 rounded-xl px-4 py-3.5 text-white text-sm placeholder:text-white/25 outline-none focus:border-violet-500/40 transition-colors"
           />
           <input
             type="password"
@@ -291,11 +291,11 @@ export default function AdminPage() {
             onChange={e => setPassword(e.target.value)}
             placeholder="Password"
             autoComplete="current-password"
-            className="w-full bg-white/[0.04] border border-white/12 rounded-xl px-4 py-3.5 text-white text-sm placeholder:text-white/25 outline-none focus:border-yellow-400/40 transition-colors"
+            className="w-full bg-white/[0.04] border border-white/12 rounded-xl px-4 py-3.5 text-white text-sm placeholder:text-white/25 outline-none focus:border-violet-500/40 transition-colors"
           />
           {error && <p className="text-red-400 text-xs font-mono px-1">{error}</p>}
           <button type="submit"
-            className="w-full py-3.5 rounded-xl bg-yellow-400 text-black text-sm font-black hover:bg-yellow-300 transition-colors active:scale-[0.99]">
+            className="w-full py-3.5 rounded-xl bg-violet-500 text-black text-sm font-black hover:bg-violet-400 transition-colors active:scale-[0.99]">
             Sign In
           </button>
         </form>

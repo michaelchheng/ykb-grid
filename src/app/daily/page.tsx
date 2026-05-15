@@ -102,7 +102,7 @@ export default function DailyChallenge() {
 
   if (!mounted) return (
     <div className="min-h-screen bg-[#08080d] flex items-center justify-center">
-      <div className="w-6 h-6 rounded-full border-2 border-yellow-400/30 border-t-yellow-400 animate-spin" />
+      <div className="w-6 h-6 rounded-full border-2 border-violet-500/30 border-t-violet-500 animate-spin" />
     </div>
   );
 
@@ -134,7 +134,7 @@ export default function DailyChallenge() {
 
   if (!q) return (
     <div className="min-h-screen bg-[#08080d] flex items-center justify-center">
-      <div className="w-6 h-6 rounded-full border-2 border-yellow-400/30 border-t-yellow-400 animate-spin" />
+      <div className="w-6 h-6 rounded-full border-2 border-violet-500/30 border-t-violet-500 animate-spin" />
     </div>
   );
 
@@ -146,13 +146,13 @@ export default function DailyChallenge() {
       <div className="border-b border-white/[0.06] px-5 py-3 flex items-center justify-between">
         <Link href="/" className="text-white/30 hover:text-white/60 transition-colors text-xs font-mono">← Hub</Link>
         <div className="text-center">
-          <p className="text-[10px] font-mono text-yellow-400/70 uppercase tracking-widest">Daily Challenge</p>
+          <p className="text-[10px] font-mono text-violet-400/70 uppercase tracking-widest">Daily Challenge</p>
           <p className="text-[10px] font-mono text-white/25">{new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</p>
         </div>
         <div className="flex items-center gap-2">
           {isAdmin && !answered && (
             <button onClick={() => { pick(q.valueA >= q.valueB ? 'A' : 'B'); setTimeout(next, 400); }}
-              className="text-[9px] font-mono text-yellow-400/60 border border-yellow-400/30 rounded px-1.5 py-0.5 hover:bg-yellow-400/10 transition-colors">
+              className="text-[9px] font-mono text-violet-400/60 border border-violet-500/30 rounded px-1.5 py-0.5 hover:bg-violet-500/10 transition-colors">
               SKIP
             </button>
           )}
@@ -246,7 +246,7 @@ export default function DailyChallenge() {
                 {correct ? '✓ Correct' : '✗ Wrong'}
               </p>
               <button onClick={next}
-                className="px-8 py-3 rounded-xl bg-yellow-400 text-black font-black text-sm hover:bg-yellow-300 transition-colors active:scale-[0.98]">
+                className="px-8 py-3 rounded-xl bg-violet-500 text-black font-black text-sm hover:bg-violet-400 transition-colors active:scale-[0.98]">
                 {qIndex + 1 >= ROUND_TOTAL ? 'See Results' : `Next (${qIndex + 1}/${ROUND_TOTAL})`}
               </button>
             </div>
