@@ -283,10 +283,11 @@ interface MatchupData {
 export async function POST(req: NextRequest) {
   const { difficulty = 'medium', count = 5 } = await req.json().catch(() => ({}));
 
-  // Serve from cache
+  // Serve from cache only when there's a surplus — exact-count hits get fresh questions
+  // This prevents two back-to-back requests from serving the same batch
   const cacheKey = difficulty;
   const cached = qCache.get(cacheKey) ?? [];
-  if (cached.length >= count) {
+  if (cached.length > count + 2) {
     const batch = cached.splice(0, count);
     qCache.set(cacheKey, cached);
     return Response.json({ questions: batch, source: 'cache' });
