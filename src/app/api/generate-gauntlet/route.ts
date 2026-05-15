@@ -192,15 +192,14 @@ Return ONLY the raw JSON array, no markdown fences.`;
       .trim().replace(/^```json?\s*/i, '').replace(/```\s*$/i, '');
     const flavors: { flavor: string; positionHint: string }[] = JSON.parse(raw);
 
-    const now = Date.now();
-    const questions = matchups.map((m, i) => {
+    const questions = matchups.map((m, idx) => {
       const a = m.answer;
-      const f = flavors[i] ?? { flavor: '', positionHint: 'Forward' };
+      const f = flavors[idx] ?? { flavor: '', positionHint: 'Forward' };
       const allOptions = [a.playerName as string, ...m.wrongs.map(w => w.playerName)] as [string, string, string, string];
       const shuffled = allOptions.sort(() => Math.random() - 0.5) as [string, string, string, string];
 
       return {
-        id: `ag_${String(a.playerName).toLowerCase().replace(/\s+/g,'_')}_${m.season.replace('-','_')}_${now + i}`,
+        id: `ag_${String(a.playerName).toLowerCase().replace(/[^a-z0-9]/g,'_')}_${m.season.replace('-','_')}`,
         ppg: a.ppg,
         rpg: a.rpg,
         apg: a.apg,
