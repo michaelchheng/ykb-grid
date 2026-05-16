@@ -62,17 +62,44 @@ function formatValue(value: number, unit: string): string {
 }
 
 // ── Pool builder ───────────────────────────────────────────────────────────────
-function pickQuestion(_streak: number, used: Set<string>, _aiExtra: Question[], tier: 'easy'|'medium'|'hard'|'niche' = 'easy', aiGauntlet: GauntletQuestion[] = []): AnyQ | null {
+function pickQuestion(streak: number, used: Set<string>, aiExtra: Question[], tier: 'easy'|'medium'|'hard'|'niche' = 'easy', aiGauntlet: GauntletQuestion[] = [], aiDraft: DraftChallenge[] = []): AnyQ | null {
+  const compDiff  = tier;
   const gauntDiff = tier === 'easy' ? 'Easy' : tier === 'medium' ? 'Medium' : tier === 'hard' ? 'Hard' : 'Niche';
+  const draftDiff = gauntDiff;
 
-  // Gauntlet only — all questions from the 5-agent AI pipeline
-  const aiPool = aiGauntlet.filter(q => !used.has(q.id));
-  const staticFallback = GAUNTLET_QUESTIONS.filter(q => q.difficulty === gauntDiff && !used.has(q.id));
-  const src = aiPool.length > 0 ? aiPool : staticFallback.length > 0 ? staticFallback : GAUNTLET_QUESTIONS.filter(q => q.difficulty === gauntDiff);
-  if (src.length === 0) return null;
-  const q = src[Math.floor(Math.random() * src.length)];
-  const options = [...q.options].sort(() => Math.random() - 0.5);
-  return { type: 'gauntlet', id: q.id, data: q, options };
+  const rand = Math.random();
+  // 60% comparison (Who Had More), 30% gauntlet (Name the Player), 10% draft (Rank Order)
+  let qType: 'comparison' | 'gauntlet' | 'draft' = 'comparison';
+  if (rand < 0.10) qType = 'draft';
+  else if (rand < 0.40) qType = 'gauntlet';
+
+  if (qType === 'comparison') {
+    const staticPool   = getQuestionsByDifficulty(compDiff as 'easy' | 'medium' | 'hard' | 'niche');
+    const unusedStatic = staticPool.filter(q => !used.has(q.id));
+    const pool = aiExtra.length > 0 ? aiExtra : unusedStatic.length > 0 ? unusedStatic : staticPool;
+    const q = pool[Math.floor(Math.random() * pool.length)];
+    if (!q) return null;
+    return { type: 'comparison', id: q.id, data: q };
+  }
+
+  if (qType === 'gauntlet') {
+    const aiPool         = aiGauntlet.filter(q => !used.has(q.id));
+    const staticFallback = GAUNTLET_QUESTIONS.filter(q => q.difficulty === gauntDiff && !used.has(q.id));
+    const src = aiPool.length > 0 ? aiPool : staticFallback.length > 0 ? staticFallback : GAUNTLET_QUESTIONS.filter(q => q.difficulty === gauntDiff);
+    if (src.length === 0) return null;
+    const q = src[Math.floor(Math.random() * src.length)];
+    const options = [...q.options].sort(() => Math.random() - 0.5);
+    return { type: 'gauntlet', id: q.id, data: q, options };
+  }
+
+  // Draft / Rank Order
+  const aiDraftPool    = aiDraft.filter(c => !used.has(c.id));
+  const staticDraft    = DRAFT_CHALLENGES.filter(c => c.difficulty === draftDiff && !used.has(c.id));
+  const draftSrc = aiDraftPool.length > 0 ? aiDraftPool : staticDraft.length > 0 ? staticDraft : DRAFT_CHALLENGES.filter(c => c.difficulty === draftDiff);
+  if (draftSrc.length === 0) return null;
+  const c = draftSrc[Math.floor(Math.random() * draftSrc.length)];
+  const shuffled = [...c.players].sort(() => Math.random() - 0.5);
+  return { type: 'draft', id: c.id, data: c, shuffled };
 }
 
 type GameState = 'hub' | 'playing' | 'correct' | 'wrong' | 'locked';
@@ -93,6 +120,7 @@ export default function Home() {
   const [, forceUpdate]                       = useState(0);
   const [aiBuffer, setAiBuffer]               = useState<Question[]>([]);
   const [aiGauntletBuffer, setAiGauntletBuffer] = useState<GauntletQuestion[]>([]);
+  const [aiDraftBuffer, setAiDraftBuffer]         = useState<DraftChallenge[]>([]);
   const [fetchingAi, setFetchingAi]           = useState(false);
   const [loadingStep, setLoadingStep]         = useState<string | null>(null);
 
@@ -213,11 +241,35 @@ export default function Home() {
     } catch { /* silent */ }
   }, []);
 
+  const draftPrewarmed = useRef(false);
+
+  const fetchAiDraft = useCallback(async (difficulty: string) => {
+    try {
+      const diff = difficulty === 'easy' ? 'Easy' : difficulty === 'medium' ? 'Medium' : difficulty === 'hard' ? 'Hard' : 'Niche';
+      const res = await fetch('/api/generate-draft', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ difficulty: diff }),
+      });
+      const data = await res.json();
+      const challenge = data.challenge as DraftChallenge | undefined;
+      if (challenge) setAiDraftBuffer(prev => [...prev, challenge]);
+    } catch { /* silent */ }
+  }, []);
+
   // Pre-warm AI gauntlet buffer on mount so first gauntlet Q is always AI-generated
   useEffect(() => {
     if (gauntletPrewarmed.current) return;
     gauntletPrewarmed.current = true;
     fetchAiGauntlet(selectedTier);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Pre-warm AI draft buffer on mount
+  useEffect(() => {
+    if (draftPrewarmed.current) return;
+    draftPrewarmed.current = true;
+    fetchAiDraft(selectedTier);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -245,7 +297,7 @@ export default function Home() {
     if (!isAdmin && isLockedOut(selectedTier)) { setGameState('locked'); return; }
     const s = getTodayStreak(selectedTier);
     setStreak(s);
-    const q = pickQuestion(s, usedIds, aiBuffer, selectedTier, aiGauntletBuffer);
+    const q = pickQuestion(s, usedIds, aiBuffer, selectedTier, aiGauntletBuffer, aiDraftBuffer);
     setCurrentQ(q);
     resetAnswerState(q);
     setGameState('playing');
@@ -355,17 +407,21 @@ export default function Home() {
     if (currentQ?.id) newUsed.add(currentQ.id);
     setUsedIds(newUsed);
     try { localStorage.setItem(`ykb_used_${selectedTier}`, JSON.stringify([...newUsed])); } catch { }
-    // Drain used gauntlet question from AI buffer
+    // Drain used questions from AI buffers
     if (currentQ?.type === 'gauntlet' && currentQ.id) {
       setAiGauntletBuffer(prev => prev.filter(q => q.id !== currentQ.id));
     }
-    const q = pickQuestion(streak, newUsed, aiBuffer, selectedTier, aiGauntletBuffer);
+    if (currentQ?.type === 'draft' && currentQ.id) {
+      setAiDraftBuffer(prev => prev.filter(c => c.id !== currentQ.id));
+    }
+    const q = pickQuestion(streak, newUsed, aiBuffer, selectedTier, aiGauntletBuffer, aiDraftBuffer);
     setCurrentQ(q);
     resetAnswerState(q);
     gauntletQuestionStartMs.current = Date.now();
     setGameState('playing');
     if (aiBuffer.length < 3) fetchAiQuestions(selectedTier);
     if (aiGauntletBuffer.length < 6) fetchAiGauntlet(selectedTier);
+    if (aiDraftBuffer.length < 3) fetchAiDraft(selectedTier);
   }
 
 
