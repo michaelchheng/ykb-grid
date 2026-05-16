@@ -220,26 +220,29 @@ function pickPair(
 
   if (difficulty === 'niche') return pickSemanticNichePair(leaders);
 
+  const n = leaders.length;
+  if (n < 10) return null;
+
   let idxA: number, idxB: number;
   switch (difficulty) {
     case 'easy':
-      // Top-15 recognizable player vs someone deep in the list — obvious gap
-      idxA = Math.floor(r() * 15);
-      idxB = Math.min(leaders.length - 1, 55 + Math.floor(r() * 45));
+      // Top star vs someone deep — use relative bands so short lists still work
+      idxA = Math.floor(r() * Math.min(15, Math.floor(n * 0.15)));
+      idxB = Math.min(n - 1, Math.floor(n * 0.55) + Math.floor(r() * Math.floor(n * 0.35)));
       break;
     case 'medium':
-      idxA = 5 + Math.floor(r() * 15);
-      idxB = Math.min(leaders.length - 1, 25 + Math.floor(r() * 25));
+      idxA = Math.floor(r() * Math.min(20, Math.floor(n * 0.25)));
+      idxB = Math.min(n - 1, Math.floor(n * 0.35) + Math.floor(r() * Math.floor(n * 0.30)));
       break;
     case 'hard':
-      idxA = Math.floor(r() * 20);
-      idxB = idxA + 1 + Math.floor(r() * 4);
+      idxA = Math.floor(r() * Math.min(20, Math.floor(n * 0.40)));
+      idxB = Math.min(n - 1, idxA + 1 + Math.floor(r() * 4));
       break;
     default:
-      idxA = 0; idxB = 5;
+      idxA = 0; idxB = Math.min(5, n - 1);
   }
 
-  if (idxB >= leaders.length) return null;
+  if (idxA === idxB || idxB >= n) return null;
   const a = leaders[idxA];
   const b = leaders[idxB];
   if (a.stat === b.stat) return null;
