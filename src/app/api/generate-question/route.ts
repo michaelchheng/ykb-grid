@@ -282,6 +282,56 @@ interface MatchupData {
   playerB: NBALeaderRow;
 }
 
+// ── Template fallback (no GPT needed) ─────────────────────────────────────────
+// Used when OpenAI is rate-limited. Real stats, template flavor text.
+const FLAVOR_TEMPLATES = [
+  (a: string, av: number, b: string, bv: number, unit: string, season: string) =>
+    `${a} put up ${av} ${unit} vs ${b}'s ${bv} in the ${season} season. One of these is clearly higher — but do you know which?`,
+  (a: string, av: number, b: string, bv: number, unit: string, season: string) =>
+    `${season}: ${a} (${av} ${unit}) vs ${b} (${bv} ${unit}). The gap might surprise you.`,
+  (a: string, av: number, b: string, bv: number, unit: string, season: string) =>
+    `Both ${a} and ${b} were active in ${season}. One finished with ${av} ${unit}, the other with ${bv}. Which one's on top?`,
+  (a: string, av: number, b: string, bv: number, unit: string, season: string) =>
+    `${a} vs ${b} — ${season} regular season ${unit}. The difference is ${Math.abs(av - bv).toFixed(1)}. Who had more?`,
+];
+
+function buildTemplatedQuestions(matchups: MatchupData[], difficulty: string): Record<string, unknown>[] {
+  const now = Date.now();
+  return matchups.map((m, i) => {
+    const tmpl = FLAVOR_TEMPLATES[i % FLAVOR_TEMPLATES.length];
+    const flavor = tmpl(
+      m.playerA.playerName, m.playerA.stat,
+      m.playerB.playerName, m.playerB.stat,
+      m.strategy.unit, m.season,
+    );
+    return {
+      id: makeId(m.playerA, m.playerB, m.strategy.statCategory, m.season, now + i),
+      era: seasonEra(m.season),
+      category: m.strategy.category,
+      label: m.strategy.label,
+      subLabel: `${m.season} regular season`,
+      flavor,
+      playerA: {
+        id: m.playerA.playerName.toLowerCase().replace(/[^a-z0-9]+/g, '_'),
+        name: m.playerA.playerName,
+        label: `${m.playerA.team} ${m.season}`,
+        color: teamColor(m.playerA.team),
+      },
+      playerB: {
+        id: m.playerB.playerName.toLowerCase().replace(/[^a-z0-9]+/g, '_'),
+        name: m.playerB.playerName,
+        label: `${m.playerB.team} ${m.season}`,
+        color: teamColor(m.playerB.team),
+      },
+      valueA: m.playerA.stat,
+      valueB: m.playerB.stat,
+      unit: m.strategy.unit,
+      difficulty,
+      _source: 'nba_api+template',
+    };
+  });
+}
+
 // ── Main POST handler ──────────────────────────────────────────────────────────
 export async function POST(req: NextRequest) {
   const { difficulty = 'medium', count = 5 } = await req.json().catch(() => ({}));
@@ -391,7 +441,16 @@ Return ONLY the raw JSON array — no markdown fences, no explanation.`;
       signal: AbortSignal.timeout(25000),
     });
 
-    if (!aiRes.ok) throw new Error(`OpenAI ${aiRes.status}`);
+    if (!aiRes.ok) {
+      if (aiRes.status === 429) {
+        // Rate-limited — build questions from real data using templates, no GPT
+        const templated = buildTemplatedQuestions(matchups, difficulty);
+        const existing = qCache.get(cacheKey) ?? [];
+        qCache.set(cacheKey, [...existing, ...templated]);
+        return Response.json({ questions: templated, source: 'nba_api+template', matchupsUsed: matchups.length });
+      }
+      throw new Error(`OpenAI ${aiRes.status}`);
+    }
     const aiData = await aiRes.json();
     const raw = (aiData.choices?.[0]?.message?.content ?? '[]')
       .trim().replace(/^```json?\s*/i, '').replace(/```\s*$/i, '');
