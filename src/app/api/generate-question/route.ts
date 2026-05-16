@@ -380,7 +380,7 @@ Return ONLY the raw JSON array — no markdown fences, no explanation.`;
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
       body: JSON.stringify({
-        model: 'gpt-4o',
+        model: 'gpt-4o-mini',
         temperature: 0.85,
         max_tokens: 4000,
         messages: [
@@ -487,7 +487,7 @@ Return ONLY a JSON array of integers matching the input array length.`;
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
       body: JSON.stringify({
-        model: 'gpt-4o',
+        model: 'gpt-4o-mini',
         temperature: 0.9,
         max_tokens: 800,
         messages: [
