@@ -416,7 +416,10 @@ export default function Home() {
     if (currentQ?.id) newUsed.add(currentQ.id);
     setUsedIds(newUsed);
     try { localStorage.setItem(`ykb_used_${selectedTier}`, JSON.stringify([...newUsed])); } catch { }
-    // Drain used questions from AI buffers
+    // Drain used questions from ALL AI buffers
+    if (currentQ?.type === 'comparison' && currentQ.id) {
+      setAiBuffer(prev => prev.filter(q => q.id !== currentQ.id));
+    }
     if (currentQ?.type === 'gauntlet' && currentQ.id) {
       setAiGauntletBuffer(prev => prev.filter(q => q.id !== currentQ.id));
     }
