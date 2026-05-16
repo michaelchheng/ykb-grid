@@ -62,44 +62,53 @@ function formatValue(value: number, unit: string): string {
 }
 
 // ── Pool builder ───────────────────────────────────────────────────────────────
-function pickQuestion(streak: number, used: Set<string>, aiExtra: Question[], tier: 'easy'|'medium'|'hard'|'niche' = 'easy', aiGauntlet: GauntletQuestion[] = [], aiDraft: DraftChallenge[] = []): AnyQ | null {
-  const compDiff  = tier;
+// ── Question type rules by tier ─────────────────────────────────────────────
+// easy:         comparison only (wide stat gaps, recognizable stars)
+// medium/hard:  comparison + gauntlet (50/50)
+// niche:        comparison + gauntlet + draft (40/40/20)
+function pickQuestion(_streak: number, used: Set<string>, aiExtra: Question[], tier: 'easy'|'medium'|'hard'|'niche' = 'easy', aiGauntlet: GauntletQuestion[] = [], aiDraft: DraftChallenge[] = []): AnyQ | null {
   const gauntDiff = tier === 'easy' ? 'Easy' : tier === 'medium' ? 'Medium' : tier === 'hard' ? 'Hard' : 'Niche';
-  const draftDiff = gauntDiff;
 
-  const rand = Math.random();
-  // 60% comparison (Who Had More), 30% gauntlet (Name the Player), 10% draft (Rank Order)
-  let qType: 'comparison' | 'gauntlet' | 'draft' = 'comparison';
-  if (rand < 0.10) qType = 'draft';
-  else if (rand < 0.40) qType = 'gauntlet';
+  // Gate question types by tier
+  let qType: 'comparison' | 'gauntlet' | 'draft';
+  if (tier === 'easy') {
+    qType = 'comparison';
+  } else if (tier === 'medium' || tier === 'hard') {
+    qType = Math.random() < 0.5 ? 'comparison' : 'gauntlet';
+  } else {
+    // niche: 40% comparison, 40% gauntlet, 20% draft
+    const r = Math.random();
+    qType = r < 0.20 ? 'draft' : r < 0.60 ? 'gauntlet' : 'comparison';
+  }
 
   if (qType === 'comparison') {
-    const staticPool   = getQuestionsByDifficulty(compDiff as 'easy' | 'medium' | 'hard' | 'niche');
+    const unusedAi     = aiExtra.filter(q => !used.has(q.id));
+    const staticPool   = getQuestionsByDifficulty(tier as 'easy' | 'medium' | 'hard' | 'niche');
     const unusedStatic = staticPool.filter(q => !used.has(q.id));
-    const pool = aiExtra.length > 0 ? aiExtra : unusedStatic.length > 0 ? unusedStatic : staticPool;
+    const pool = unusedAi.length > 0 ? unusedAi : unusedStatic.length > 0 ? unusedStatic : staticPool;
     const q = pool[Math.floor(Math.random() * pool.length)];
     if (!q) return null;
     return { type: 'comparison', id: q.id, data: q };
   }
 
   if (qType === 'gauntlet') {
-    const aiPool         = aiGauntlet.filter(q => !used.has(q.id));
-    const staticFallback = GAUNTLET_QUESTIONS.filter(q => q.difficulty === gauntDiff && !used.has(q.id));
-    const src = aiPool.length > 0 ? aiPool : staticFallback.length > 0 ? staticFallback : GAUNTLET_QUESTIONS.filter(q => q.difficulty === gauntDiff);
+    const unusedAi     = aiGauntlet.filter(q => !used.has(q.id));
+    const staticPool   = GAUNTLET_QUESTIONS.filter(q => q.difficulty === gauntDiff);
+    const unusedStatic = staticPool.filter(q => !used.has(q.id));
+    const src = unusedAi.length > 0 ? unusedAi : unusedStatic.length > 0 ? unusedStatic : staticPool;
     if (src.length === 0) return null;
     const q = src[Math.floor(Math.random() * src.length)];
-    const options = [...q.options].sort(() => Math.random() - 0.5);
-    return { type: 'gauntlet', id: q.id, data: q, options };
+    return { type: 'gauntlet', id: q.id, data: q, options: [...q.options].sort(() => Math.random() - 0.5) };
   }
 
-  // Draft / Rank Order
-  const aiDraftPool    = aiDraft.filter(c => !used.has(c.id));
-  const staticDraft    = DRAFT_CHALLENGES.filter(c => c.difficulty === draftDiff && !used.has(c.id));
-  const draftSrc = aiDraftPool.length > 0 ? aiDraftPool : staticDraft.length > 0 ? staticDraft : DRAFT_CHALLENGES.filter(c => c.difficulty === draftDiff);
+  // draft — niche only, always use Niche difficulty pool
+  const unusedAiDraft  = aiDraft.filter(c => !used.has(c.id));
+  const staticDraftAll = DRAFT_CHALLENGES.filter(c => c.difficulty === 'Niche');
+  const unusedStatic   = staticDraftAll.filter(c => !used.has(c.id));
+  const draftSrc = unusedAiDraft.length > 0 ? unusedAiDraft : unusedStatic.length > 0 ? unusedStatic : staticDraftAll;
   if (draftSrc.length === 0) return null;
   const c = draftSrc[Math.floor(Math.random() * draftSrc.length)];
-  const shuffled = [...c.players].sort(() => Math.random() - 0.5);
-  return { type: 'draft', id: c.id, data: c, shuffled };
+  return { type: 'draft', id: c.id, data: c, shuffled: [...c.players].sort(() => Math.random() - 0.5) };
 }
 
 type GameState = 'hub' | 'playing' | 'correct' | 'wrong' | 'locked';
@@ -295,7 +304,7 @@ export default function Home() {
 
   function startGame() {
     if (!isAdmin && isLockedOut(selectedTier)) { setGameState('locked'); return; }
-    const s = getTodayStreak(selectedTier);
+    const s = 0; // always start fresh — todayStreak shown on hub is display-only
     setStreak(s);
     const q = pickQuestion(s, usedIds, aiBuffer, selectedTier, aiGauntletBuffer, aiDraftBuffer);
     setCurrentQ(q);
@@ -534,7 +543,7 @@ export default function Home() {
               <button onClick={startGame}
                 className="w-full py-5 rounded-2xl bg-sky-400 text-black font-black text-xl hover:bg-sky-300 transition-all active:scale-[0.98] shadow-lg shadow-sky-400/20"
                 style={{ marginBottom: fetchingAi && loadingStep ? '12px' : '32px' }}>
-                {todayS > 0 ? `Continue — ${todayS} 🔥` : 'Start'}
+                Start
               </button>
               {fetchingAi && loadingStep && (
                 <div className="flex items-center justify-center gap-2 mb-8 text-xs text-white/40 font-mono">
