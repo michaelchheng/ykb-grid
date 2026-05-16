@@ -62,55 +62,17 @@ function formatValue(value: number, unit: string): string {
 }
 
 // ── Pool builder ───────────────────────────────────────────────────────────────
-function pickQuestion(streak: number, used: Set<string>, aiExtra: Question[], tier: 'easy'|'medium'|'hard'|'niche' = 'easy', aiGauntlet: GauntletQuestion[] = []): AnyQ | null {
-  const compDiff  = tier;
+function pickQuestion(_streak: number, used: Set<string>, _aiExtra: Question[], tier: 'easy'|'medium'|'hard'|'niche' = 'easy', aiGauntlet: GauntletQuestion[] = []): AnyQ | null {
   const gauntDiff = tier === 'easy' ? 'Easy' : tier === 'medium' ? 'Medium' : tier === 'hard' ? 'Hard' : 'Niche';
-  const draftDiff = gauntDiff;
 
-  const rand = Math.random();
-  const draftChance    = tier === 'niche' && streak >= 5 ? 0.15 : 0;
-  const gauntletChance = 0.30;
-  let qType: 'comparison' | 'gauntlet' | 'draft' = 'comparison';
-  if (rand < draftChance) qType = 'draft';
-  else if (rand < draftChance + gauntletChance) qType = 'gauntlet';
-
-  if (qType === 'comparison') {
-    const staticPool = getQuestionsByDifficulty(compDiff as 'easy' | 'medium' | 'hard' | 'niche');
-    const aiPool     = aiExtra; // AI questions have unique IDs — always fresh, never block them
-    const unusedStatic = staticPool.filter(q => !used.has(q.id));
-    // Prefer AI questions heavily; fall back to unused static, then any static
-    const pool = aiPool.length > 0 ? aiPool : unusedStatic.length > 0 ? unusedStatic : staticPool;
-    const q = pool[Math.floor(Math.random() * pool.length)];
-    if (!q) return null;
-    return { type: 'comparison', id: q.id, data: q };
-  }
-
-  if (qType === 'gauntlet') {
-    const aiGPool = aiGauntlet.filter(q => !used.has(q.id));
-    const staticUnused = GAUNTLET_QUESTIONS.filter(q => q.difficulty === gauntDiff && !used.has(q.id));
-    const src = aiGPool.length > 0 ? aiGPool : staticUnused.length > 0 ? staticUnused : GAUNTLET_QUESTIONS.filter(q => q.difficulty === gauntDiff);
-    if (src.length === 0) {
-      const staticPool = getQuestionsByDifficulty(compDiff as 'easy' | 'medium' | 'hard' | 'niche');
-      const q = staticPool.filter(q => !used.has(q.id))[0] ?? staticPool[0];
-      if (!q) return null;
-      return { type: 'comparison', id: q.id, data: q };
-    }
-    const q = src[Math.floor(Math.random() * src.length)];
-    const options = [...q.options].sort(() => Math.random() - 0.5);
-    return { type: 'gauntlet', id: q.id, data: q, options };
-  }
-
-  const pool = DRAFT_CHALLENGES.filter(c => c.difficulty === draftDiff && !used.has(c.id));
-  const src  = pool.length > 0 ? pool : DRAFT_CHALLENGES.filter(c => c.difficulty === draftDiff);
-  if (src.length === 0) {
-    const staticPool = getQuestionsByDifficulty(compDiff as 'easy' | 'medium' | 'hard' | 'niche');
-    const q = staticPool.filter(q => !used.has(q.id))[0] ?? staticPool[0];
-    if (!q) return null;
-    return { type: 'comparison', id: q.id, data: q };
-  }
-  const c = src[Math.floor(Math.random() * src.length)];
-  const shuffled = [...c.players].sort(() => Math.random() - 0.5);
-  return { type: 'draft', id: c.id, data: c, shuffled };
+  // Gauntlet only — all questions from the 5-agent AI pipeline
+  const aiPool = aiGauntlet.filter(q => !used.has(q.id));
+  const staticFallback = GAUNTLET_QUESTIONS.filter(q => q.difficulty === gauntDiff && !used.has(q.id));
+  const src = aiPool.length > 0 ? aiPool : staticFallback.length > 0 ? staticFallback : GAUNTLET_QUESTIONS.filter(q => q.difficulty === gauntDiff);
+  if (src.length === 0) return null;
+  const q = src[Math.floor(Math.random() * src.length)];
+  const options = [...q.options].sort(() => Math.random() - 0.5);
+  return { type: 'gauntlet', id: q.id, data: q, options };
 }
 
 type GameState = 'hub' | 'playing' | 'correct' | 'wrong' | 'locked';
