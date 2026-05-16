@@ -826,11 +826,7 @@ export default function Home() {
   );
 
   const isRevealed = gameState === 'correct';
-  const modeLabel = currentQ.type === 'comparison'
-    ? 'Who Had More?'
-    : currentQ.type === 'gauntlet'
-    ? 'Name the Player'
-    : 'Rank Order';
+  const modeLabel = 'Gauntlet';
 
   return (
     <div className="min-h-screen bg-[#08080d] text-white flex flex-col">
