@@ -81,6 +81,14 @@ const COMMON_STRATEGIES: StatStrategy[] = [
   { statCategory: 'GP',   colName: 'GP',   label: 'Games Played',           unit: 'games',            category: 'games_played',       minGames: 60 },
 ];
 
+// Easy-only stats — only well-known stats where top players are recognizable stars
+const EASY_STRATEGIES: StatStrategy[] = [
+  { statCategory: 'PTS',  colName: 'PTS',  label: 'Points Per Game',        unit: 'points',           category: 'points',             minGames: 50 },
+  { statCategory: 'AST',  colName: 'AST',  label: 'Assists',                unit: 'assists',          category: 'assists',            minGames: 50 },
+  { statCategory: 'REB',  colName: 'REB',  label: 'Rebounds',               unit: 'rebounds',         category: 'offensive_rebounds', minGames: 50 },
+  { statCategory: 'FG3M', colName: 'FG3M', label: 'Three-Pointers Made',    unit: 'threes',           category: 'three_point_pct',    minGames: 50 },
+];
+
 // Niche-only obscure stats — used only for niche tier to ensure weird/hard questions
 const NICHE_STRATEGIES: StatStrategy[] = [
   { statCategory: 'PF',    colName: 'PF',    label: 'Personal Fouls',             unit: 'fouls',            category: 'personal_fouls',     minGames: 30, nicheOnly: true },
@@ -359,7 +367,9 @@ export async function POST(req: NextRequest) {
   const generateCount = count + 2;
   const strategyPool = difficulty === 'niche'
     ? [...NICHE_STRATEGIES, ...NICHE_STRATEGIES].sort(() => Math.random() - 0.5)
-    : [...COMMON_STRATEGIES, ...COMMON_STRATEGIES].sort(() => Math.random() - 0.5);
+    : difficulty === 'easy'
+      ? [...EASY_STRATEGIES, ...EASY_STRATEGIES].sort(() => Math.random() - 0.5)
+      : [...COMMON_STRATEGIES, ...COMMON_STRATEGIES].sort(() => Math.random() - 0.5);
   const strategies = strategyPool.slice(0, generateCount);
 
   // Fetch NBA data in parallel — each gets a random season
