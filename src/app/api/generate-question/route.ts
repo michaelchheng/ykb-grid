@@ -234,9 +234,9 @@ function pickPair(
   let idxA: number, idxB: number;
   switch (difficulty) {
     case 'easy':
-      // Top star vs someone deep — use relative bands so short lists still work
-      idxA = Math.floor(r() * Math.min(15, Math.floor(n * 0.15)));
-      idxB = Math.min(n - 1, Math.floor(n * 0.55) + Math.floor(r() * Math.floor(n * 0.35)));
+      // playerA = true star (top 10 only), playerB = deep bench (bottom 40%)
+      idxA = Math.floor(r() * Math.min(10, Math.floor(n * 0.08)));
+      idxB = Math.min(n - 1, Math.floor(n * 0.60) + Math.floor(r() * Math.floor(n * 0.35)));
       break;
     case 'medium':
       idxA = Math.floor(r() * Math.min(20, Math.floor(n * 0.25)));
@@ -270,18 +270,15 @@ function makeId(a: NBALeaderRow, b: NBALeaderRow, stat: string, season: string, 
 // ── Prompts ────────────────────────────────────────────────────────────────────
 const SYSTEM_PROMPT = `You write flavor text for "Who Had More?" — a basketball trivia game where users guess which NBA player had more of a given stat.
 
-Your ONLY job: write a 1-2 sentence "flavor" field for each matchup. Rules:
-- Name both players and mention their exact stat values
-- Add genuine basketball context (career year? tight race? historically significant? obscure deep cut?)
-- For NICHE matchups: players are deep cuts — backup guards, fringe starters, one-season wonders, old-school names. Celebrate the obscurity. Be specific about WHY this is impossible to know.
-- For niche near-identical stats: lean into how absurdly close the gap is
-- Write in a knowledgeable, slightly snarky fan's voice — opinionated, vivid, punchy
-- Never change any stat numbers I provide
-- Do NOT say "Did you know" — state it confidently
-- NEVER start a sentence with "In a battle of", "In a season where", "In a", "In what", "In the" — vary your openings
-- NEVER use the phrase "just a number" or "showcasing" or "highlighting"
-- Start each flavor differently — lead with the player name, a stat fact, a team context, a historical note, or a contrast
-- For niche: if a star appears, make the comparison feel unfair and weird`;
+Your ONLY job: write EXACTLY 1 sentence for each matchup. Hard rules:
+- Max 20 words. No exceptions.
+- Name both players and cite both exact stat values
+- No filler — cut anything that doesn't add information (no "testament to", "key factor", "incredible ability", "continues to")
+- Snarky fan voice — punchy, direct, like a group chat message
+- Never start with "In a", "In the", "In what", "Did you know"
+- NEVER say "showcasing", "highlighting", "testament", "undisputed"
+- For niche: celebrate the obscurity — "two guys nobody remembers", "fringe roster spot energy"
+- Vary your sentence openers across all matchups in the batch`;
 
 interface MatchupData {
   strategy: StatStrategy;
