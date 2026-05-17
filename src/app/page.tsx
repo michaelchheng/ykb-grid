@@ -126,6 +126,8 @@ export default function Home() {
   const [showAdminDrawer, setShowAdminDrawer] = useState(false);
   const [showProfile, setShowProfile]         = useState(false);
   const [adPopup, setAdPopup]               = useState<'unlock'|'streak'|null>(null);
+  const [shields, setShields]                 = useState<number>(() => typeof window !== 'undefined' ? Number(localStorage.getItem('ykb_shields') || '0') : 0);
+  const [shieldFlash, setShieldFlash]         = useState(false);
   const [, forceUpdate]                       = useState(0);
   const [aiBuffer, setAiBuffer]               = useState<Question[]>([]);
   const [aiGauntletBuffer, setAiGauntletBuffer] = useState<GauntletQuestion[]>([]);
@@ -345,7 +347,23 @@ export default function Home() {
       setStreak(newStreak);
       saveTodayStreak(newStreak, selectedTier, uid);
       saveBest(newStreak, selectedTier, uid);
+      // Award a shield every 5 correct in a row, max 3
+      if (newStreak % 5 === 0) {
+        setShields(prev => {
+          const next = Math.min(prev + 1, 3);
+          localStorage.setItem('ykb_shields', String(next));
+          return next;
+        });
+      }
       setGameState('correct');
+    } else if (shields > 0) {
+      // Shield absorbs the loss
+      const newShields = shields - 1;
+      setShields(newShields);
+      localStorage.setItem('ykb_shields', String(newShields));
+      setShieldFlash(true);
+      setTimeout(() => setShieldFlash(false), 2000);
+      setGameState('correct'); // treat as survived — move on
     } else {
       saveBest(streak, selectedTier, uid);
       setLockout(selectedTier, uid);
@@ -888,10 +906,23 @@ export default function Home() {
               SKIP
             </button>
           )}
+          {shields > 0 && (
+            <span className="text-xs tracking-tight">
+              {Array.from({ length: shields }).map((_, i) => (
+                <span key={i} className={shieldFlash ? 'text-sky-300 animate-pulse' : 'text-white/50'}>🛡</span>
+              ))}
+            </span>
+          )}
           <span className="text-xl font-black tabular-nums" style={{ color: '#38bdf8' }}>{streak}</span>
           <span className="text-[10px] font-sans text-white/30">&#x1F525;</span>
         </div>
       </div>
+
+      {shieldFlash && (
+        <div className="text-center py-2 bg-sky-400/10 border-b border-sky-400/20 text-sky-300 text-sm font-black animate-pulse">
+          🛡️ Shield saved your streak!
+        </div>
+      )}
 
       <div className="flex-1 flex flex-col items-center justify-center px-5 py-6">
         <div className="max-w-sm w-full">
