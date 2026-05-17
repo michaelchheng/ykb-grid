@@ -436,32 +436,61 @@ ${metaContext}
 Return ONLY the raw JSON array — no markdown fences, no explanation.`;
 
   try {
-    const aiRes = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        temperature: 0.85,
-        max_tokens: 4000,
-        messages: [
-          { role: 'system', content: SYSTEM_PROMPT },
-          { role: 'user',   content: userPrompt },
-        ],
-      }),
-      signal: AbortSignal.timeout(25000),
-    });
+    const groqKey  = process.env.mc_groq_api_key;
+    const openaiKey = apiKey;
 
-    if (!aiRes.ok) {
-      if (aiRes.status === 429) {
-        // Rate-limited — build questions from real data using templates, no GPT
-        const templated = buildTemplatedQuestions(matchups, difficulty);
-        const existing = qCache.get(cacheKey) ?? [];
-        qCache.set(cacheKey, [...existing, ...templated]);
-        return Response.json({ questions: templated, source: 'nba_api+template', matchupsUsed: matchups.length });
-      }
-      throw new Error(`OpenAI ${aiRes.status}`);
+    // Try Groq first (faster + higher rate limits), fall back to OpenAI
+    let llmRes: Response | null = null;
+    let llmSource = 'groq';
+
+    if (groqKey) {
+      try {
+        llmRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${groqKey}` },
+          body: JSON.stringify({
+            model: 'llama-3.3-70b-versatile',
+            temperature: 0.85,
+            max_tokens: 4000,
+            messages: [
+              { role: 'system', content: SYSTEM_PROMPT },
+              { role: 'user',   content: userPrompt },
+            ],
+          }),
+          signal: AbortSignal.timeout(15000),
+        });
+        if (!llmRes.ok) { llmRes = null; }
+      } catch { llmRes = null; }
     }
-    const aiData = await aiRes.json();
+
+    // OpenAI fallback
+    if (!llmRes && openaiKey && !openaiKey.startsWith('your-')) {
+      llmSource = 'openai';
+      const oRes = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${openaiKey}` },
+        body: JSON.stringify({
+          model: 'gpt-4o-mini',
+          temperature: 0.85,
+          max_tokens: 4000,
+          messages: [
+            { role: 'system', content: SYSTEM_PROMPT },
+            { role: 'user',   content: userPrompt },
+          ],
+        }),
+        signal: AbortSignal.timeout(25000),
+      });
+      if (oRes.ok) llmRes = oRes;
+    }
+
+    // Template fallback — no LLM at all
+    if (!llmRes) {
+      const templated = buildTemplatedQuestions(matchups, difficulty);
+      const existing = qCache.get(cacheKey) ?? [];
+      qCache.set(cacheKey, [...existing, ...templated]);
+      return Response.json({ questions: templated, source: 'nba_api+template', matchupsUsed: matchups.length });
+    }
+    const aiData = await llmRes.json();
     const raw = (aiData.choices?.[0]?.message?.content ?? '[]')
       .trim().replace(/^```json?\s*/i, '').replace(/```\s*$/i, '');
 
@@ -487,7 +516,7 @@ Return ONLY the raw JSON array — no markdown fences, no explanation.`;
     const existing = qCache.get(cacheKey) ?? [];
     qCache.set(cacheKey, [...existing, ...evaluated]);
 
-    return Response.json({ questions: evaluated, source: 'nba_api+gpt+eval', matchupsUsed: matchups.length });
+    return Response.json({ questions: evaluated, source: `nba_api+${llmSource}+eval`, matchupsUsed: matchups.length });
   } catch (e) {
     console.error('Question generation failed:', e);
     return Response.json({ questions: [], error: String(e) }, { status: 200 });
