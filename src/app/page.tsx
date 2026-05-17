@@ -162,6 +162,15 @@ export default function Home() {
     if (fbUser.email) setUserEmail(fbUser.email);
   }, [fbUser?.uid]);
 
+  // Push AdSense ad whenever the popup opens
+  useEffect(() => {
+    if (!adPopup) return;
+    try {
+      const w = window as typeof window & { adsbygoogle: unknown[] };
+      (w.adsbygoogle = w.adsbygoogle || []).push({});
+    } catch { /* ad not loaded yet */ }
+  }, [adPopup]);
+
   useEffect(() => {
     const saved = localStorage.getItem('ykb_username');
     if (saved) setUsername(saved);
@@ -830,17 +839,25 @@ export default function Home() {
 
       {adPopup && (
         <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center px-6">
-          <div className="max-w-xs w-full rounded-2xl border border-white/10 bg-[#0f0f18] p-8 text-center">
-            <p className="text-4xl mb-4">📺</p>
-            <p className="text-white font-black text-xl mb-2">Ads Coming Soon</p>
-            <p className="text-white/50 text-sm mb-6">
-              {adPopup === 'streak'
-                ? 'Once ads are live, watching one will save your streak.'
-                : 'Once ads are live, watching one will unlock your tier.'}
+          <div className="max-w-sm w-full rounded-2xl border border-white/10 bg-[#0f0f18] p-6 text-center">
+            <p className="text-white font-black text-lg mb-1">
+              {adPopup === 'streak' ? 'Save your streak' : 'Unlock this tier'}
             </p>
+            <p className="text-white/40 text-xs mb-4">
+              {adPopup === 'streak' ? 'Watch an ad to keep going.' : 'Watch an ad to play.'}
+            </p>
+            {/* AdSense display unit — slot 4172175723 */}
+            <ins
+              className="adsbygoogle"
+              style={{ display: 'block', minHeight: 100 }}
+              data-ad-client="ca-pub-7874759706660952"
+              data-ad-slot="4172175723"
+              data-ad-format="auto"
+              data-full-width-responsive="true"
+            />
             <button onClick={() => setAdPopup(null)}
-              className="w-full py-3 rounded-xl bg-sky-400 text-black font-black text-sm hover:bg-sky-300 transition-all">
-              Got it
+              className="mt-4 w-full py-3 rounded-xl bg-sky-400 text-black font-black text-sm hover:bg-sky-300 transition-all">
+              Continue
             </button>
           </div>
         </div>
