@@ -19,7 +19,7 @@ const BALL_IQ_RANKS = [
   { label: 'Hooper',              color: '#38bdf8', minStreak: 4  },
   { label: 'Film Room',           color: '#c084fc', minStreak: 10 },
   { label: 'Elite Ball Knowledge',color: '#f97316', minStreak: 18 },
-  { label: 'Niche',               color: '#38bdf8', minStreak: 28 },
+  { label: 'Niche',               color: '#facc15', minStreak: 28 },
 ] as const;
 
 function getBallIQ(best: number) {
@@ -85,7 +85,12 @@ function pickQuestion(_streak: number, used: Set<string>, aiExtra: Question[], t
     const unusedAi     = aiExtra.filter(q => !used.has(q.id));
     const staticPool   = getQuestionsByDifficulty(tier as 'easy' | 'medium' | 'hard' | 'niche');
     const unusedStatic = staticPool.filter(q => !used.has(q.id));
-    const pool = unusedAi.length > 0 ? unusedAi : unusedStatic.length > 0 ? unusedStatic : staticPool;
+    // If static pool exhausted, wipe usedIds for this type and restart fresh
+    if (unusedAi.length === 0 && unusedStatic.length === 0) {
+      staticPool.forEach(q => used.delete(q.id));
+      try { localStorage.setItem(`ykb_used_${tier}`, JSON.stringify([])); } catch { }
+    }
+    const pool = unusedAi.length > 0 ? unusedAi : staticPool.filter(q => !used.has(q.id));
     const q = pool[Math.floor(Math.random() * pool.length)];
     if (!q) return null;
     return { type: 'comparison', id: q.id, data: q };
@@ -95,7 +100,11 @@ function pickQuestion(_streak: number, used: Set<string>, aiExtra: Question[], t
     const unusedAi     = aiGauntlet.filter(q => !used.has(q.id));
     const staticPool   = GAUNTLET_QUESTIONS.filter(q => q.difficulty === gauntDiff);
     const unusedStatic = staticPool.filter(q => !used.has(q.id));
-    const src = unusedAi.length > 0 ? unusedAi : unusedStatic.length > 0 ? unusedStatic : staticPool;
+    // If static pool exhausted, wipe and restart
+    if (unusedAi.length === 0 && unusedStatic.length === 0) {
+      staticPool.forEach(q => used.delete(q.id));
+    }
+    const src = unusedAi.length > 0 ? unusedAi : staticPool.filter(q => !used.has(q.id));
     if (src.length === 0) return null;
     const q = src[Math.floor(Math.random() * src.length)];
     return { type: 'gauntlet', id: q.id, data: q, options: [...q.options].sort(() => Math.random() - 0.5) };
@@ -105,10 +114,15 @@ function pickQuestion(_streak: number, used: Set<string>, aiExtra: Question[], t
   const unusedAiDraft  = aiDraft.filter(c => !used.has(c.id));
   const staticDraftAll = DRAFT_CHALLENGES.filter(c => c.difficulty === 'Niche');
   const unusedStatic   = staticDraftAll.filter(c => !used.has(c.id));
-  const draftSrc = unusedAiDraft.length > 0 ? unusedAiDraft : unusedStatic.length > 0 ? unusedStatic : staticDraftAll;
+  // If static pool exhausted, wipe and restart
+  if (unusedAiDraft.length === 0 && unusedStatic.length === 0) {
+    staticDraftAll.forEach(c => used.delete(c.id));
+  }
+  const draftSrc = unusedAiDraft.length > 0 ? unusedAiDraft : staticDraftAll.filter(c => !used.has(c.id));
   if (draftSrc.length === 0) return null;
   const c = draftSrc[Math.floor(Math.random() * draftSrc.length)];
-  return { type: 'draft', id: c.id, data: c, shuffled: [...c.players].sort(() => Math.random() - 0.5) };
+  const top3Players = c.players.slice(0, 3);
+  return { type: 'draft', id: c.id, data: { ...c, players: top3Players }, shuffled: [...top3Players].sort(() => Math.random() - 0.5) };
 }
 
 type GameState = 'hub' | 'playing' | 'correct' | 'wrong' | 'locked';
@@ -428,7 +442,7 @@ export default function Home() {
       const correct = newRanking.reduce((acc, p, i) => acc + (p.name === currentQ.data.players[i]?.name ? 1 : 0), 0);
       setDraftScore(correct);
       setDraftSubmitted(true);
-      handleResult(correct === 5);
+      handleResult(correct === currentQ.data.players.length);
     }
   }
 
@@ -832,7 +846,7 @@ export default function Home() {
                     </div>
                   ))}
                 </div>
-                <p className="text-xs text-white/40 font-medium mt-2">{draftScore}/5 positions correct</p>
+                <p className="text-xs text-white/40 font-medium mt-2">{draftScore}/{currentQ.data.players.length} positions correct</p>
               </>
             )}
           </div>
@@ -1048,12 +1062,12 @@ export default function Home() {
             return (
               <>
                 <div className="mb-4">
-                  <p className="text-[10px] font-sans text-sky-300/60 uppercase tracking-widest mb-1">All 5 correct to continue</p>
+                  <p className="text-[10px] font-sans text-sky-300/60 uppercase tracking-widest mb-1">All {c.players.length} correct to continue</p>
                   <p className="font-black text-xl">{c.statLabel}</p>
                   <p className="text-white/35 text-xs font-sans mt-0.5">{c.season} &middot; Highest &rarr; Lowest</p>
                 </div>
                 <div className="space-y-2 mb-4">
-                  {Array.from({ length: 5 }).map((_, i) => {
+                  {Array.from({ length: c.players.length }).map((_, i) => {
                     const p       = draftRanking[i];
                     const answerP = draftSubmitted ? c.players[i] : null;
                     const correct = draftSubmitted && p?.name === c.players[i]?.name;
@@ -1104,8 +1118,8 @@ export default function Home() {
                   </div>
                 )}
                 {draftSubmitted && (
-                  <p className="text-center text-sm font-black mt-3" style={{ color: draftScore === 5 ? '#34d399' : '#f87171' }}>
-                    {draftScore === 5 ? 'Perfect' : `${draftScore}/5 correct`}
+                  <p className="text-center text-sm font-black mt-3" style={{ color: draftScore === c.players.length ? '#34d399' : '#f87171' }}>
+                    {draftScore === c.players.length ? 'Perfect' : `${draftScore}/${c.players.length} correct`}
                   </p>
                 )}
               </>

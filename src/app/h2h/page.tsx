@@ -5,6 +5,39 @@ import Link from 'next/link';
 import { getQuestionsByDifficulty, type Question } from '@/data/questions';
 import { useSocket } from '@/hooks/useSocket';
 
+// ── COMING SOON GATE ─────────────────────────────────────────────────────────
+function ComingSoon() {
+  return (
+    <div className="min-h-screen bg-[#08080d] text-white flex flex-col items-center justify-center px-5">
+      <div className="max-w-sm w-full text-center">
+        <Link href="/" className="text-[10px] font-mono text-white/30 hover:text-white/60 transition-colors uppercase tracking-widest mb-10 inline-block">← Hub</Link>
+        <p className="text-5xl mb-5">⚔️</p>
+        <h1 className="text-3xl font-black mb-2">Head-to-Head</h1>
+        <p className="text-white/40 text-sm mb-8 leading-relaxed">Live 1v1 duels are coming soon.<br />Same question, same time. First to 3 of 5 wins.</p>
+        <div className="rounded-2xl border border-white/8 bg-white/[0.03] px-6 py-5 mb-8 text-left space-y-3">
+          <div className="flex items-center gap-3">
+            <span className="text-white/20">◻</span>
+            <p className="text-white/40 text-sm">Create or join a private room via code</p>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="text-white/20">◻</span>
+            <p className="text-white/40 text-sm">15-second timer per question</p>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="text-white/20">◻</span>
+            <p className="text-white/40 text-sm">Best of 5 — real time via WebSocket</p>
+          </div>
+        </div>
+        <Link href="/" className="inline-block px-8 py-3 rounded-xl bg-sky-400 text-black font-black text-sm hover:bg-sky-300 transition-all">
+          Back to Hub
+        </Link>
+      </div>
+    </div>
+  );
+}
+
+const H2H_LIVE = false; // flip to true when ready to ship
+
 type Phase = 'lobby' | 'waiting' | 'ready' | 'question' | 'round_result' | 'gameover';
 
 interface H2HPlayer { username: string; wins: number; }
@@ -45,6 +78,9 @@ function pickRandomQuestion(used: Set<string>): H2HQuestion | null {
 }
 
 export default function HeadToHead() {
+  if (!H2H_LIVE) return <ComingSoon />;
+
+  // eslint-disable-next-line react-hooks/rules-of-hooks
   const [phase, setPhase]             = useState<Phase>('lobby');
   const [mode, setMode]               = useState<'create' | 'join'>('create');
   const [roomCode, setRoomCode]       = useState('');
