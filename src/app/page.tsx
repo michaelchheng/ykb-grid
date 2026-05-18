@@ -942,21 +942,21 @@ export default function Home() {
 
       {/* Steps */}
       <div className="relative z-10 text-center space-y-2">
-        <p className="text-white font-black text-lg tracking-tight">
+        <p className="font-bold text-xl tracking-tight">
           {loadingStep === 'Pulling NBA stats...'   && <span className="text-sky-400">Pulling NBA stats</span>}
           {loadingStep === 'Finding matchups...'    && <span className="text-purple-400">Finding matchups</span>}
-          {loadingStep === 'Writing flavor text...' && <span className="text-yellow-400">Writing flavor text</span>}
+          {loadingStep === 'Writing flavor text...' && <span className="text-yellow-400">Crafting the question</span>}
           {loadingStep === 'Grading question quality...' && <span className="text-emerald-400">Grading quality</span>}
           {loadingStep === 'Fixing weak questions...' && <span className="text-orange-400">Fixing weak ones</span>}
-          {(!loadingStep || loadingStep === 'Connecting...' || loadingStep === 'Done') && <span className="text-white/60">Generating question</span>}
+          {(!loadingStep || loadingStep === 'Connecting...' || loadingStep === 'Done') && <span className="text-white/80">Generating question</span>}
         </p>
-        <p className="text-white/30 text-xs font-mono">
-          {loadingStep === 'Pulling NBA stats...'   && 'fetching real stat data from NBA API…'}
-          {loadingStep === 'Finding matchups...'    && 'picking the best player pair…'}
-          {loadingStep === 'Writing flavor text...' && 'AI writing flavor text…'}
-          {loadingStep === 'Grading question quality...' && 'QC agent scoring the matchup…'}
-          {loadingStep === 'Fixing weak questions...' && 'repairing low-quality questions…'}
-          {(!loadingStep || loadingStep === 'Connecting...' || loadingStep === 'Done') && 'connecting to generation pipeline…'}
+        <p className="text-white/60 text-sm font-sans">
+          {loadingStep === 'Pulling NBA stats...'   && 'fetching real stat data from the NBA'}
+          {loadingStep === 'Finding matchups...'    && 'picking the best player matchup'}
+          {loadingStep === 'Writing flavor text...' && 'writing the question with AI'}
+          {loadingStep === 'Grading question quality...' && 'QC agent scoring the question'}
+          {loadingStep === 'Fixing weak questions...' && 'rewriting any low-quality questions'}
+          {(!loadingStep || loadingStep === 'Connecting...' || loadingStep === 'Done') && 'connecting to generation pipeline'}
         </p>
       </div>
 
@@ -968,7 +968,7 @@ export default function Home() {
           const active = i === stepIdx;
           return (
             <div key={i} className="w-1.5 h-1.5 rounded-full transition-all duration-300"
-              style={{ background: active ? '#38bdf8' : done ? '#38bdf8' : 'rgba(255,255,255,0.1)', opacity: done ? 0.4 : 1, transform: active ? 'scale(1.5)' : 'scale(1)' }} />
+              style={{ background: active ? '#38bdf8' : done ? '#38bdf8' : 'rgba(255,255,255,0.15)', opacity: done ? 0.5 : 1, transform: active ? 'scale(1.5)' : 'scale(1)' }} />
           );
         })}
       </div>
