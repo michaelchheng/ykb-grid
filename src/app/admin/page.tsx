@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 
 interface AgentTiming { agentName: string; durationMs: number; tokens?: { totalTokens: number; estimatedCostUsd: number } }
@@ -22,6 +22,174 @@ interface AdminStats {
 
 type Tier = 'easy' | 'medium' | 'hard' | 'niche';
 
+// ── Mock Simulator ───────────────────────────────────────────────────────────
+const MOCK_PLAYERS = [
+  'LeBron James', 'Kevin Durant', 'Stephen Curry', 'Giannis Antetokounmpo',
+  'Nikola Jokic', 'Joel Embiid', 'Luka Doncic', 'Jayson Tatum',
+  'Damian Lillard', 'Anthony Davis', 'Kawhi Leonard', 'Paul George',
+  'Jimmy Butler', 'Devin Booker', 'Donovan Mitchell', 'Ja Morant',
+  'Zion Williamson', 'Trae Young', 'De\'Aaron Fox', 'Tyrese Haliburton',
+  'Kobe Bryant', 'Dwyane Wade', 'Dirk Nowitzki', 'Allen Iverson',
+  'Shaquille O\'Neal', 'Tim Duncan', 'Chris Paul', 'Carmelo Anthony',
+  'Dwight Howard', 'Paul Pierce', 'Tracy McGrady', 'Vince Carter',
+];
+const MOCK_STATS = ['PPG', 'APG', 'RPG', 'SPG', 'BPG', 'FG%', '3P%', 'PER'];
+const MOCK_GAUNTLET_PLAYERS = [
+  'Bob Cousy', 'Wilt Chamberlain', 'Oscar Robertson', 'Jerry West',
+  'Elgin Baylor', 'Willis Reed', 'Dave Cowens', 'Nate Archibald',
+  'Moses Malone', 'George Gervin', 'Julius Erving', 'Bernard King',
+];
+
+type SimEventType = 'prewarm' | 'serve' | 'dedup-drop' | 'refill-trigger' | 'refill-done' | 'wait' | 'wait-resolved';
+interface SimEvent {
+  round: number;
+  type: SimEventType;
+  msg: string;
+  bufferComp: number;
+  bufferGaunt: number;
+  bufferDraft: number;
+  flag?: 'ok' | 'warn' | 'drop' | 'refill' | 'wait';
+}
+
+function mockMatchupKey(a: string, b: string) { return `${a}|${b}`; }
+
+async function runMockSim(
+  tier: Tier,
+  rounds: number,
+  speedMs: number,
+  onEvent: (e: SimEvent) => void,
+  cancelRef: React.MutableRefObject<boolean>
+) {
+  const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
+  const seen = new Set<string>();
+
+  // Helper: generate a fake batch
+  function genBatch(count: number, type: 'comp' | 'gaunt' | 'draft'): string[] {
+    const pool = type === 'gaunt' ? MOCK_GAUNTLET_PLAYERS : MOCK_PLAYERS;
+    const items: string[] = [];
+    const tries = count * 4;
+    for (let i = 0; i < tries && items.length < count; i++) {
+      if (type === 'comp') {
+        const a = pool[Math.floor(Math.random() * pool.length)];
+        const b = pool[Math.floor(Math.random() * pool.length)];
+        if (a === b) continue;
+        items.push(`${a} vs ${b}`);
+      } else if (type === 'gaunt') {
+        items.push(pool[Math.floor(Math.random() * pool.length)]);
+      } else {
+        items.push(`Draft: ${MOCK_PLAYERS.slice(0,5).sort(() => Math.random()-0.5).join(', ')}`);
+      }
+    }
+    return items.slice(0, count);
+  }
+
+  // Buffers
+  let compBuf: string[] = [];
+  let gauntBuf: string[] = [];
+  let draftBuf: string[] = [];
+
+  // Pre-warm
+  const rawComp  = genBatch(8, 'comp');
+  const rawGaunt = tier !== 'easy' ? genBatch(12, 'gaunt') : [];
+  const rawDraft = tier === 'niche' ? genBatch(1, 'draft') : [];
+
+  // Dedup filter on pre-warm
+  let dropped = 0;
+  for (const q of rawComp) {
+    const k = mockMatchupKey(...(q.split(' vs ') as [string, string]));
+    if (seen.has(k)) { dropped++; continue; }
+    seen.add(k); seen.add(mockMatchupKey(...(q.split(' vs ').reverse() as [string, string])));
+    compBuf.push(q);
+  }
+  gauntBuf = rawGaunt;
+  draftBuf = rawDraft;
+
+  onEvent({ round: 0, type: 'prewarm', msg: `Pre-warm complete: ${compBuf.length} comp (+${dropped} deduped), ${gauntBuf.length} gauntlet, ${draftBuf.length} draft`, bufferComp: compBuf.length, bufferGaunt: gauntBuf.length, bufferDraft: draftBuf.length, flag: 'ok' });
+  await sleep(speedMs);
+  if (cancelRef.current) return;
+
+  for (let round = 1; round <= rounds; round++) {
+    if (cancelRef.current) return;
+
+    // Pick type
+    let qType: 'comp' | 'gaunt' | 'draft';
+    if (tier === 'easy') qType = 'comp';
+    else if (tier === 'medium' || tier === 'hard') qType = Math.random() < 0.5 ? 'comp' : 'gaunt';
+    else { const r = Math.random(); qType = r < 0.20 ? 'draft' : r < 0.60 ? 'gaunt' : 'comp'; }
+
+    const buf = qType === 'comp' ? compBuf : qType === 'gaunt' ? gauntBuf : draftBuf;
+
+    if (buf.length === 0) {
+      // Wait state
+      onEvent({ round, type: 'wait', msg: `Round ${round}: Buffer empty (${qType}) — waiting for AI generation…`, bufferComp: compBuf.length, bufferGaunt: gauntBuf.length, bufferDraft: draftBuf.length, flag: 'wait' });
+      await sleep(speedMs * 2);
+      if (cancelRef.current) return;
+      // Simulate refill arriving
+      const refilled = genBatch(qType === 'comp' ? 8 : qType === 'gaunt' ? 12 : 1, qType);
+      let refDropped = 0;
+      if (qType === 'comp') {
+        for (const q of refilled) {
+          const parts = q.split(' vs ');
+          const k = mockMatchupKey(parts[0], parts[1]);
+          if (seen.has(k)) { refDropped++; continue; }
+          seen.add(k); seen.add(mockMatchupKey(parts[1], parts[0]));
+          compBuf.push(q);
+        }
+      } else if (qType === 'gaunt') {
+        gauntBuf.push(...refilled);
+      } else {
+        draftBuf.push(...refilled);
+      }
+      onEvent({ round, type: 'wait-resolved', msg: `Round ${round}: Generation done — ${refilled.length - refDropped} new ${qType} questions added (${refDropped} dupes dropped), auto-advancing`, bufferComp: compBuf.length, bufferGaunt: gauntBuf.length, bufferDraft: draftBuf.length, flag: 'ok' });
+      await sleep(speedMs);
+      if (cancelRef.current) return;
+    }
+
+    // Serve from buffer
+    const served = qType === 'comp' ? compBuf.shift()! : qType === 'gaunt' ? gauntBuf.shift()! : draftBuf.shift()!;
+    if (!served) continue;
+    const stat = MOCK_STATS[Math.floor(Math.random() * MOCK_STATS.length)];
+    const label = qType === 'comp' ? `${served} · ${stat}` : qType === 'gaunt' ? `Gauntlet: ${served}` : served;
+    onEvent({ round, type: 'serve', msg: `Round ${round}: Served [${qType.toUpperCase()}] ${label}`, bufferComp: compBuf.length, bufferGaunt: gauntBuf.length, bufferDraft: draftBuf.length, flag: 'ok' });
+    await sleep(speedMs * 0.6);
+    if (cancelRef.current) return;
+
+    // Check refill threshold
+    const needsCompRefill  = compBuf.length < 3;
+    const needsGauntRefill = gauntBuf.length < 6 && tier !== 'easy';
+    const needsDraftRefill = draftBuf.length < 3 && tier === 'niche';
+
+    if (needsCompRefill || needsGauntRefill || needsDraftRefill) {
+      const which = [needsCompRefill && 'comp', needsGauntRefill && 'gaunt', needsDraftRefill && 'draft'].filter(Boolean).join('+');
+      onEvent({ round, type: 'refill-trigger', msg: `Round ${round}: ⚡ Refill triggered (${which} below threshold)`, bufferComp: compBuf.length, bufferGaunt: gauntBuf.length, bufferDraft: draftBuf.length, flag: 'refill' });
+      await sleep(speedMs);
+      if (cancelRef.current) return;
+
+      // Simulate refill arriving after some rounds
+      if (needsCompRefill) {
+        const refilled = genBatch(8, 'comp');
+        let refDropped = 0;
+        for (const q of refilled) {
+          const parts = q.split(' vs ');
+          const k = mockMatchupKey(parts[0], parts[1]);
+          if (seen.has(k)) { refDropped++; continue; }
+          seen.add(k); seen.add(mockMatchupKey(parts[1], parts[0]));
+          compBuf.push(q);
+        }
+        if (refDropped > 0) {
+          onEvent({ round, type: 'dedup-drop', msg: `Round ${round}: 🚫 Dedup — ${refDropped} comp matchup(s) already seen this session, dropped`, bufferComp: compBuf.length, bufferGaunt: gauntBuf.length, bufferDraft: draftBuf.length, flag: 'drop' });
+          await sleep(speedMs * 0.5);
+          if (cancelRef.current) return;
+        }
+      }
+      if (needsGauntRefill) gauntBuf.push(...genBatch(12, 'gaunt'));
+      if (needsDraftRefill) draftBuf.push(...genBatch(1, 'draft'));
+
+      onEvent({ round, type: 'refill-done', msg: `Round ${round}: ✓ Refill done — comp:${compBuf.length} gaunt:${gauntBuf.length} draft:${draftBuf.length}`, bufferComp: compBuf.length, bufferGaunt: gauntBuf.length, bufferDraft: draftBuf.length, flag: 'ok' });
+      await sleep(speedMs * 0.4);
+    }
+  }
+}
 
 export default function AdminPage() {
   const [username, setUsername] = useState('');
@@ -32,6 +200,13 @@ export default function AdminPage() {
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [statsLoading, setStatsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<'tools' | 'pipeline' | 'feedback' | 'sim'>('tools');
+  const [simTier, setSimTier]           = useState<Tier>('easy');
+  const [simRounds, setSimRounds]       = useState(20);
+  const [simSpeed, setSimSpeed]         = useState(300);
+  const [simRunning, setSimRunning]     = useState(false);
+  const [simEvents, setSimEvents]       = useState<SimEvent[]>([]);
+  const simCancel                       = useRef(false);
+  const simLogRef                       = useRef<HTMLDivElement>(null);
 
   const fetchStats = useCallback(async () => {
     setStatsLoading(true);
@@ -263,60 +438,142 @@ export default function AdminPage() {
           {/* Simulation tab */}
           {activeTab === 'sim' && (
             <div className="space-y-4">
-              {/* Status banner */}
-              <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-4 flex items-start gap-3">
-                <span className="text-lg mt-0.5">✅</span>
-                <div>
-                  <p className="text-emerald-400 text-sm font-bold">AI-only mode active — repeats are not possible</p>
-                  <p className="text-white/35 text-xs mt-1 leading-relaxed">The static question pool was removed. Every question is now freshly AI-generated and unique within your session. There is no pool to exhaust and no used-ID tracking needed.</p>
+              {/* Controls */}
+              <div className="rounded-2xl border border-white/10 bg-white/3 p-4 space-y-4">
+                <p className="text-[10px] font-mono text-white/30 uppercase tracking-widest">Mock Pipeline Simulator</p>
+                <p className="text-white/30 text-xs">Runs the full generation loop with fake NBA data — no API calls, no tokens burned. Shows buffer fills, dedup drops, refill triggers, and wait states in real time.</p>
+
+                <div className="grid grid-cols-3 gap-3">
+                  {/* Tier */}
+                  <div className="space-y-1">
+                    <p className="text-[10px] font-mono text-white/25">TIER</p>
+                    <select value={simTier} onChange={e => setSimTier(e.target.value as Tier)}
+                      className="w-full bg-black/40 border border-white/10 rounded-lg px-2 py-1.5 text-white text-xs font-mono outline-none">
+                      {(['easy','medium','hard','niche'] as Tier[]).map(t => <option key={t} value={t}>{t}</option>)}
+                    </select>
+                  </div>
+                  {/* Rounds */}
+                  <div className="space-y-1">
+                    <p className="text-[10px] font-mono text-white/25">ROUNDS</p>
+                    <select value={simRounds} onChange={e => setSimRounds(Number(e.target.value))}
+                      className="w-full bg-black/40 border border-white/10 rounded-lg px-2 py-1.5 text-white text-xs font-mono outline-none">
+                      {[10,20,50,100].map(n => <option key={n} value={n}>{n}</option>)}
+                    </select>
+                  </div>
+                  {/* Speed */}
+                  <div className="space-y-1">
+                    <p className="text-[10px] font-mono text-white/25">SPEED</p>
+                    <select value={simSpeed} onChange={e => setSimSpeed(Number(e.target.value))}
+                      className="w-full bg-black/40 border border-white/10 rounded-lg px-2 py-1.5 text-white text-xs font-mono outline-none">
+                      <option value={600}>Slow</option>
+                      <option value={300}>Normal</option>
+                      <option value={80}>Fast</option>
+                      <option value={10}>Instant</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="flex gap-2">
+                  <button
+                    disabled={simRunning}
+                    onClick={() => {
+                      simCancel.current = false;
+                      setSimEvents([]);
+                      setSimRunning(true);
+                      runMockSim(simTier, simRounds, simSpeed, (e) => {
+                        setSimEvents(prev => [...prev, e]);
+                        setTimeout(() => simLogRef.current?.scrollTo({ top: simLogRef.current.scrollHeight, behavior: 'smooth' }), 30);
+                      }, simCancel).finally(() => setSimRunning(false));
+                    }}
+                    className="flex-1 py-2 rounded-lg bg-sky-400 text-black text-xs font-black hover:bg-sky-300 disabled:opacity-40 transition-colors">
+                    {simRunning ? 'Running…' : '▶ Run Simulation'}
+                  </button>
+                  {simRunning && (
+                    <button onClick={() => { simCancel.current = true; }}
+                      className="px-4 py-2 rounded-lg border border-red-500/30 text-red-400 text-xs font-bold hover:bg-red-500/10 transition-colors">
+                      Stop
+                    </button>
+                  )}
+                  {!simRunning && simEvents.length > 0 && (
+                    <button onClick={() => setSimEvents([])}
+                      className="px-4 py-2 rounded-lg border border-white/10 text-white/30 text-xs font-mono hover:bg-white/5 transition-colors">
+                      Clear
+                    </button>
+                  )}
                 </div>
               </div>
 
-              {/* How it works */}
-              <div className="rounded-2xl border border-white/8 bg-white/[0.02] p-4 space-y-4">
-                <p className="text-[10px] font-mono text-white/30 uppercase tracking-widest">How the pipeline works</p>
-
-                <div className="space-y-3">
-                  <div className="flex gap-3 items-start">
-                    <div className="w-5 h-5 rounded-full bg-sky-400/20 border border-sky-400/30 flex items-center justify-center shrink-0 mt-0.5">
-                      <span className="text-[9px] font-black text-sky-400">1</span>
+              {/* Live buffer gauges */}
+              {simEvents.length > 0 && (() => {
+                const last = simEvents[simEvents.length - 1];
+                const tierColors: Record<Tier, string> = { easy: '#34d399', medium: '#38bdf8', hard: '#c084fc', niche: '#facc15' };
+                const color = tierColors[simTier];
+                return (
+                  <div className="rounded-2xl border border-white/8 bg-white/2 p-4 space-y-3">
+                    <p className="text-[10px] font-mono text-white/25 uppercase tracking-widest">Live Buffer State — Round {simEvents.filter(e => e.type === 'serve').length}/{simRounds}</p>
+                    <div className="grid grid-cols-3 gap-3">
+                      {[{ label: 'Comparison', val: last.bufferComp, max: 10, warn: 3 },
+                        { label: 'Gauntlet',   val: last.bufferGaunt, max: 14, warn: 6 },
+                        { label: 'Draft',      val: last.bufferDraft, max: 4,  warn: 3 }]
+                        .map(g => (
+                          <div key={g.label} className="rounded-xl border border-white/6 bg-black/20 p-3">
+                            <p className="text-[10px] font-mono text-white/30 mb-1">{g.label}</p>
+                            <p className="text-xl font-black" style={{ color: g.val <= g.warn ? '#f87171' : color }}>{g.val}</p>
+                            <div className="mt-1.5 h-1 bg-white/8 rounded-full overflow-hidden">
+                              <div className="h-full rounded-full transition-all duration-300"
+                                style={{ width: `${Math.min(100, (g.val / g.max) * 100)}%`, background: g.val <= g.warn ? '#f87171' : color }} />
+                            </div>
+                          </div>
+                        ))}
                     </div>
-                    <div>
-                      <p className="text-white/60 text-xs font-bold">Pre-warm on page load</p>
-                      <p className="text-white/30 text-xs leading-relaxed mt-0.5">As soon as the page loads, the game fires 3 background fetches simultaneously: <span className="text-white/50">8 comparison questions</span> via SSE stream, <span className="text-white/50">12 gauntlet questions</span>, and <span className="text-white/50">1 draft challenge</span>. These land in in-memory buffers before you even tap Play.</p>
-                    </div>
+                    {/* Summary counts */}
+                    {(() => {
+                      const served  = simEvents.filter(e => e.type === 'serve').length;
+                      const dropped = simEvents.filter(e => e.type === 'dedup-drop').length;
+                      const waits   = simEvents.filter(e => e.type === 'wait').length;
+                      const refills = simEvents.filter(e => e.type === 'refill-trigger').length;
+                      return (
+                        <div className="grid grid-cols-4 gap-2 pt-1">
+                          {[{ label: 'Served', val: served, color: '#34d399' },
+                            { label: 'Dedup Drops', val: dropped, color: '#f97316' },
+                            { label: 'Waits', val: waits, color: '#f87171' },
+                            { label: 'Refills', val: refills, color: '#38bdf8' }]
+                            .map(s => (
+                              <div key={s.label} className="text-center">
+                                <p className="text-sm font-black" style={{ color: s.color }}>{s.val}</p>
+                                <p className="text-[9px] font-mono text-white/25">{s.label}</p>
+                              </div>
+                            ))}
+                        </div>
+                      );
+                    })()}
                   </div>
+                );
+              })()}
 
-                  <div className="flex gap-3 items-start">
-                    <div className="w-5 h-5 rounded-full bg-sky-400/20 border border-sky-400/30 flex items-center justify-center shrink-0 mt-0.5">
-                      <span className="text-[9px] font-black text-sky-400">2</span>
-                    </div>
-                    <div>
-                      <p className="text-white/60 text-xs font-bold">Instant serve from buffer</p>
-                      <p className="text-white/30 text-xs leading-relaxed mt-0.5">Each question pick pulls from the in-memory buffer. No network call at question time — it&apos;s already there. The buffer auto-refills in the background whenever it drops below the threshold (3 comparisons / 6 gauntlets / 3 drafts).</p>
-                    </div>
-                  </div>
-
-                  <div className="flex gap-3 items-start">
-                    <div className="w-5 h-5 rounded-full bg-yellow-400/20 border border-yellow-400/30 flex items-center justify-center shrink-0 mt-0.5">
-                      <span className="text-[9px] font-black text-yellow-400">3</span>
-                    </div>
-                    <div>
-                      <p className="text-white/60 text-xs font-bold">If buffer is empty (generation too slow)</p>
-                      <p className="text-white/30 text-xs leading-relaxed mt-0.5">The player sees <span className="text-white/50">&ldquo;AI is cooking up a fresh one…&rdquo;</span> with a live step indicator. The game auto-advances the moment the next question arrives — no tap needed. This only happens if generation takes longer than the time it took to answer the previous question.</p>
-                    </div>
-                  </div>
+              {/* Event log */}
+              {simEvents.length > 0 && (
+                <div ref={simLogRef} className="rounded-2xl border border-white/8 bg-black/30 p-3 h-72 overflow-y-auto space-y-1 font-mono">
+                  {simEvents.map((e, i) => {
+                    const colors: Record<string, string> = {
+                      ok: 'text-white/50', warn: 'text-yellow-400/70', drop: 'text-orange-400',
+                      refill: 'text-sky-400', wait: 'text-red-400',
+                    };
+                    const icons: Record<SimEventType, string> = {
+                      prewarm: '🔥', serve: '▶', 'dedup-drop': '🚫', 'refill-trigger': '⚡',
+                      'refill-done': '✓', wait: '⏳', 'wait-resolved': '✅',
+                    };
+                    return (
+                      <div key={i} className={['text-[10px] flex gap-2', colors[e.flag ?? 'ok']].join(' ')}>
+                        <span className="shrink-0">{icons[e.type]}</span>
+                        <span className="leading-relaxed">{e.msg}</span>
+                      </div>
+                    );
+                  })}
+                  {simRunning && <div className="text-[10px] text-white/20 animate-pulse">● generating…</div>}
+                  {!simRunning && simEvents.length > 0 && <div className="text-[10px] text-white/20 pt-1">── simulation complete ──</div>}
                 </div>
-              </div>
-
-              {/* What could still cause a repeat */}
-              <div className="rounded-2xl border border-orange-500/15 bg-orange-500/5 p-4 space-y-3">
-                <p className="text-[10px] font-mono text-orange-400/60 uppercase tracking-widest">Only remaining risk: within-session AI duplicates</p>
-                <p className="text-white/35 text-xs leading-relaxed">
-                  The AI model could theoretically generate the same matchup twice in one session (e.g. LeBron vs Jordan appears in both the initial pre-warm batch and a later refill). This is handled by the <span className="text-white/55">seenGauntletAnswers</span> dedup set for gauntlets, but not yet for comparison questions. To fully close this gap, the comparison generator would need to receive the list of already-served matchups as context.
-                </p>
-                <p className="text-white/25 text-xs">Check the AI Pipeline tab to see if any generation runs are producing errors or near-duplicate content.</p>
-              </div>
+              )}
             </div>
           )}
 
