@@ -339,7 +339,7 @@ export default function AdminPage() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-white/70 text-sm font-bold">Question Pool Simulator</p>
-                    <p className="text-white/30 text-xs mt-0.5">Shows your current used-question counts from localStorage and simulates exhaustion order for all 4 tiers simultaneously.</p>
+                    <p className="text-white/30 text-xs mt-0.5">Shows your <span className="text-yellow-400">static</span> question pool usage from localStorage. AI-generated questions are separate and always served first — see below for the full pipeline breakdown.</p>
                   </div>
                   <button
                     onClick={() => {
@@ -427,13 +427,31 @@ export default function AdminPage() {
                     );
                   })}
 
-                  <div className="rounded-xl border border-white/6 bg-black/20 px-4 py-3">
-                    <p className="text-[10px] font-mono text-white/30 uppercase tracking-widest mb-2">How repeats were fixed</p>
-                    <p className="text-white/40 text-xs leading-relaxed">
-                      Previously, when the static pool ran out, the game silently fell back to the full pool — causing repeats.
-                      Now, when a pool exhausts, the used-ID set for that question type is automatically wiped and the pool resets cleanly.
-                      AI-generated questions always take priority and are never tracked as &ldquo;used&rdquo; in the static pool.
-                    </p>
+                  <div className="rounded-xl border border-white/6 bg-black/20 px-4 py-3 space-y-3">
+                    <p className="text-[10px] font-mono text-white/30 uppercase tracking-widest">How the question pipeline works</p>
+                    <div className="space-y-2">
+                      <div className="flex gap-3 items-start">
+                        <span className="text-base">1️⃣</span>
+                        <div>
+                          <p className="text-white/60 text-xs font-bold">Static pool (shown above)</p>
+                          <p className="text-white/35 text-xs leading-relaxed">These are the hardcoded questions in the codebase. The game picks from these first, tracking used IDs in localStorage so you never repeat one until every static question has been seen. When exhausted, the used list auto-resets and cycles again.</p>
+                        </div>
+                      </div>
+                      <div className="flex gap-3 items-start">
+                        <span className="text-base">2️⃣</span>
+                        <div>
+                          <p className="text-white/60 text-xs font-bold">AI-generated questions (always take priority)</p>
+                          <p className="text-white/35 text-xs leading-relaxed">On page load, the game silently fires off AI generation in the background — 8 comparison questions, 12 gauntlet questions, and 1 draft challenge via your API routes. These land in an in-memory buffer. Whenever you start a new question, if there are any unused AI questions in the buffer, <span className="text-sky-400">they get served first</span> before any static question. AI questions are never saved to localStorage, so they only last for the current session.</p>
+                        </div>
+                      </div>
+                      <div className="flex gap-3 items-start">
+                        <span className="text-base">⚠️</span>
+                        <div>
+                          <p className="text-white/60 text-xs font-bold">Why the sim shows low numbers</p>
+                          <p className="text-white/35 text-xs leading-relaxed">The static counts above are a floor — in practice, most players will see AI questions first and never exhaust static. The sim is most useful for seeing how many sessions a player can have before cycling, assuming AI generation fails.</p>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
               )}
