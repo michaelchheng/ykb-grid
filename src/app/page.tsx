@@ -367,10 +367,10 @@ export default function Home() {
       setStreak(newStreak);
       saveTodayStreak(newStreak, selectedTier, uid);
       saveBest(newStreak, selectedTier, uid);
-      // Award a shield every 5 correct in a row, max 3
-      if (newStreak % 5 === 0) {
+      // Award a shield every 10 correct, max 2 stacked
+      if (newStreak % 10 === 0) {
         setShields(prev => {
-          const next = Math.min(prev + 1, 3);
+          const next = Math.min(prev + 1, 2);
           localStorage.setItem('ykb_shields', String(next));
           return next;
         });
@@ -919,38 +919,117 @@ export default function Home() {
 
   // ── PLAYING / CORRECT ─────────────────────────────────────────────────────
   if (!currentQ || waitingForAi) return (
-    <div className="min-h-screen bg-[#08080d] flex flex-col items-center justify-center gap-4">
-      <div className="w-6 h-6 rounded-full border-2 border-sky-400/30 border-t-sky-400 animate-spin" />
-      <p className="text-white/40 text-sm font-mono">{loadingStep ?? 'Generating question…'}</p>
-      <p className="text-white/20 text-xs">AI is cooking up a fresh one</p>
+    <div className="min-h-screen bg-[#08080d] flex flex-col items-center justify-center relative overflow-hidden">
+      {/* Ambient orbs */}
+      <div className="absolute inset-0 pointer-events-none">
+        <div className="absolute top-1/4 left-1/4 w-64 h-64 rounded-full opacity-10 animate-pulse"
+          style={{ background: 'radial-gradient(circle, #38bdf8, transparent)', filter: 'blur(40px)', animationDuration: '2s' }} />
+        <div className="absolute bottom-1/4 right-1/4 w-48 h-48 rounded-full opacity-8 animate-pulse"
+          style={{ background: 'radial-gradient(circle, #c084fc, transparent)', filter: 'blur(50px)', animationDuration: '3s', animationDelay: '1s' }} />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 rounded-full opacity-5 animate-pulse"
+          style={{ background: 'radial-gradient(circle, #facc15, transparent)', filter: 'blur(60px)', animationDuration: '4s', animationDelay: '0.5s' }} />
+      </div>
+
+      {/* Spinner */}
+      <div className="relative mb-8">
+        <div className="w-16 h-16 rounded-full border-2 border-white/5" />
+        <div className="absolute inset-0 w-16 h-16 rounded-full border-2 border-transparent border-t-sky-400 border-r-sky-400/40 animate-spin" style={{ animationDuration: '1s' }} />
+        <div className="absolute inset-2 w-12 h-12 rounded-full border border-transparent border-t-purple-400/60 animate-spin" style={{ animationDuration: '1.5s', animationDirection: 'reverse' }} />
+        <div className="absolute inset-0 flex items-center justify-center">
+          <span className="text-xl">🏀</span>
+        </div>
+      </div>
+
+      {/* Steps */}
+      <div className="relative z-10 text-center space-y-2">
+        <p className="text-white font-black text-lg tracking-tight">
+          {loadingStep === 'Pulling NBA stats...'   && <span className="text-sky-400">Pulling NBA stats</span>}
+          {loadingStep === 'Finding matchups...'    && <span className="text-purple-400">Finding matchups</span>}
+          {loadingStep === 'Writing flavor text...' && <span className="text-yellow-400">Writing flavor text</span>}
+          {loadingStep === 'Grading question quality...' && <span className="text-emerald-400">Grading quality</span>}
+          {loadingStep === 'Fixing weak questions...' && <span className="text-orange-400">Fixing weak ones</span>}
+          {(!loadingStep || loadingStep === 'Connecting...' || loadingStep === 'Done') && <span className="text-white/60">Generating question</span>}
+        </p>
+        <p className="text-white/30 text-xs font-mono">
+          {loadingStep === 'Pulling NBA stats...'   && 'fetching real stat data from NBA API…'}
+          {loadingStep === 'Finding matchups...'    && 'picking the best player pair…'}
+          {loadingStep === 'Writing flavor text...' && 'AI writing flavor text…'}
+          {loadingStep === 'Grading question quality...' && 'QC agent scoring the matchup…'}
+          {loadingStep === 'Fixing weak questions...' && 'repairing low-quality questions…'}
+          {(!loadingStep || loadingStep === 'Connecting...' || loadingStep === 'Done') && 'connecting to generation pipeline…'}
+        </p>
+      </div>
+
+      {/* Step dots */}
+      <div className="flex gap-2 mt-6">
+        {['Pulling NBA stats...','Finding matchups...','Writing flavor text...','Grading question quality...','Done'].map((step, i) => {
+          const stepIdx = ['Pulling NBA stats...','Finding matchups...','Writing flavor text...','Grading question quality...','Done'].indexOf(loadingStep ?? '');
+          const done = i < stepIdx;
+          const active = i === stepIdx;
+          return (
+            <div key={i} className="w-1.5 h-1.5 rounded-full transition-all duration-300"
+              style={{ background: active ? '#38bdf8' : done ? '#38bdf8' : 'rgba(255,255,255,0.1)', opacity: done ? 0.4 : 1, transform: active ? 'scale(1.5)' : 'scale(1)' }} />
+          );
+        })}
+      </div>
     </div>
   );
 
   const isRevealed = gameState === 'correct';
   const modeLabel = 'Gauntlet';
+  const shieldProgress = streak % 10; // progress toward next shield
 
   return (
     <div className="min-h-screen bg-[#08080d] text-white flex flex-col">
-      <div className="border-b border-white/[0.06] px-5 py-3 flex items-center justify-between">
+      {/* Top nav bar */}
+      <div className="border-b border-white/6 px-5 py-3 flex items-center justify-between">
         <button onClick={() => { setGameState('hub'); forceUpdate(n => n + 1); }}
-          className="text-white/30 hover:text-white/60 text-xs font-sans transition-colors">&#x2190; Hub</button>
+          className="text-white/30 hover:text-white/60 text-xs font-sans transition-colors">← Hub</button>
         <p className="text-xs text-white/40 font-semibold">{modeLabel}</p>
-        <div className="flex items-center gap-1.5">
-          {isAdmin && !isRevealed && (
-            <button onClick={() => handleResult(true)}
-              className="text-[9px] font-sans text-sky-300/60 border border-sky-400/30 rounded px-1.5 py-0.5 hover:bg-sky-400/10 transition-colors mr-1">
-              SKIP
-            </button>
-          )}
-          {shields > 0 && (
-            <span className="text-xs tracking-tight">
-              {Array.from({ length: shields }).map((_, i) => (
-                <span key={i} className={shieldFlash ? 'text-sky-300 animate-pulse' : 'text-white/50'}>🛡</span>
+        {isAdmin && !isRevealed ? (
+          <button onClick={() => handleResult(true)}
+            className="text-[9px] font-sans text-sky-300/60 border border-sky-400/30 rounded px-1.5 py-0.5 hover:bg-sky-400/10 transition-colors">
+            SKIP
+          </button>
+        ) : <div className="w-10" />}
+      </div>
+
+      {/* Streak + Shield bar */}
+      <div className="border-b border-white/4 px-5 py-3 flex items-center justify-between gap-4">
+        {/* Streak */}
+        <div className="flex items-center gap-2">
+          <span className="text-3xl font-black tabular-nums leading-none" style={{
+            color: streak === 0 ? 'rgba(255,255,255,0.2)' : streak >= 20 ? '#facc15' : streak >= 10 ? '#f97316' : '#38bdf8'
+          }}>{streak}</span>
+          <div>
+            <p className="text-[9px] font-mono text-white/25 uppercase tracking-widest leading-none">streak</p>
+            <p className="text-[9px] font-mono text-white/20 leading-none mt-0.5">
+              🔥 {streak === 0 ? 'answer one' : streak === 1 ? '1 in a row' : `${streak} in a row`}
+            </p>
+          </div>
+        </div>
+
+        {/* Shield progress */}
+        <div className="flex-1 max-w-[160px]">
+          <div className="flex items-center justify-between mb-1">
+            <p className="text-[9px] font-mono text-white/25 uppercase tracking-widest">shields</p>
+            <div className="flex gap-1">
+              {[0, 1].map(i => (
+                <span key={i} className={`text-sm transition-all ${i < shields && shieldFlash && i === shields - 1 ? 'animate-pulse' : ''}`}
+                  style={{ filter: i < shields ? 'none' : 'grayscale(1)', opacity: i < shields ? 1 : 0.2 }}>🛡️</span>
               ))}
-            </span>
-          )}
-          <span className="text-xl font-black tabular-nums" style={{ color: '#38bdf8' }}>{streak}</span>
-          <span className="text-[10px] font-sans text-white/30">&#x1F525;</span>
+            </div>
+          </div>
+          <div className="h-1.5 bg-white/8 rounded-full overflow-hidden">
+            <div className="h-full rounded-full transition-all duration-500"
+              style={{
+                width: shields >= 2 ? '100%' : `${(shieldProgress / 10) * 100}%`,
+                background: shields >= 2 ? '#38bdf8' : shieldProgress >= 7 ? '#38bdf8' : shieldProgress >= 4 ? '#c084fc' : 'rgba(255,255,255,0.25)'
+              }} />
+          </div>
+          <p className="text-[8px] font-mono text-white/20 mt-0.5">
+            {shields >= 2 ? 'full' : `${shieldProgress}/10 → next shield`}
+          </p>
         </div>
       </div>
 
