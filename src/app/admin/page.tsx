@@ -2,9 +2,6 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { QUESTIONS, getQuestionsByDifficulty } from '@/data/questions';
-import { GAUNTLET_QUESTIONS } from '@/data/gauntlet';
-import { DRAFT_CHALLENGES } from '@/data/draft';
 
 interface AgentTiming { agentName: string; durationMs: number; tokens?: { totalTokens: number; estimatedCostUsd: number } }
 interface PipelineLog {
@@ -25,73 +22,6 @@ interface AdminStats {
 
 type Tier = 'easy' | 'medium' | 'hard' | 'niche';
 
-interface TierSimResult {
-  tier: Tier;
-  compTotal: number;
-  compUsed: number;
-  compRemaining: number;
-  gauntTotal: number;
-  gauntUsed: number;
-  gauntRemaining: number;
-  draftTotal: number;
-  draftUsed: number;
-  draftRemaining: number;
-  // simulate running through ALL static questions in order — how many picks before a repeat?
-  repeatAfter: number | null;
-}
-
-function runSimulation(tier: Tier): TierSimResult {
-  const usedRaw = typeof window !== 'undefined' ? localStorage.getItem(`ykb_used_${tier}`) : null;
-  const used: Set<string> = new Set(usedRaw ? JSON.parse(usedRaw) as string[] : []);
-
-  const compPool  = getQuestionsByDifficulty(tier);
-  const gauntDiff = tier === 'easy' ? 'Easy' : tier === 'medium' ? 'Medium' : tier === 'hard' ? 'Hard' : 'Niche';
-  const gauntPool = GAUNTLET_QUESTIONS.filter(q => q.difficulty === gauntDiff);
-  const draftPool = DRAFT_CHALLENGES.filter(c => c.difficulty === gauntDiff);
-
-  const compUsed  = compPool.filter(q => used.has(q.id)).length;
-  const gauntUsed = gauntPool.filter(q => used.has(q.id)).length;
-  const draftUsed = draftPool.filter(c => used.has(c.id)).length;
-
-  // Simulate: pick questions one by one (no AI) until we'd hit a repeat
-  // We pick exhausting comparison → gauntlet → draft in the same ratio as the game
-  const simUsed = new Set<string>();
-  const allStatic = [
-    ...compPool.map(q => q.id),
-    ...(tier !== 'easy' ? gauntPool.map(q => q.id) : []),
-    ...(tier === 'niche' ? draftPool.map(c => c.id) : []),
-  ];
-
-  let picks = 0;
-  let repeatAfter: number | null = null;
-  // Exhaust each pool in sequence, detect when we'd start cycling
-  const combined = [...allStatic];
-  const localUsed = new Set<string>();
-  for (const id of combined) {
-    picks++;
-    if (localUsed.has(id)) { repeatAfter = picks; break; }
-    localUsed.add(id);
-  }
-
-  return {
-    tier,
-    compTotal: compPool.length,
-    compUsed,
-    compRemaining: compPool.length - compUsed,
-    gauntTotal: gauntPool.length,
-    gauntUsed,
-    gauntRemaining: gauntPool.length - gauntUsed,
-    draftTotal: draftPool.length,
-    draftUsed,
-    draftRemaining: draftPool.length - draftUsed,
-    repeatAfter,
-  };
-}
-
-function clearUsedForTier(tier: Tier) {
-  localStorage.removeItem(`ykb_used_${tier}`);
-}
-
 
 export default function AdminPage() {
   const [username, setUsername] = useState('');
@@ -102,8 +32,6 @@ export default function AdminPage() {
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [statsLoading, setStatsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<'tools' | 'pipeline' | 'feedback' | 'sim'>('tools');
-  const [simResults, setSimResults] = useState<TierSimResult[] | null>(null);
-  const [simRunning, setSimRunning] = useState(false);
 
   const fetchStats = useCallback(async () => {
     setStatsLoading(true);
@@ -335,126 +263,60 @@ export default function AdminPage() {
           {/* Simulation tab */}
           {activeTab === 'sim' && (
             <div className="space-y-4">
-              <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5 space-y-3">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-white/70 text-sm font-bold">Question Pool Simulator</p>
-                    <p className="text-white/30 text-xs mt-0.5">Shows your <span className="text-yellow-400">static</span> question pool usage from localStorage. AI-generated questions are separate and always served first — see below for the full pipeline breakdown.</p>
-                  </div>
-                  <button
-                    onClick={() => {
-                      setSimRunning(true);
-                      const results = (['easy','medium','hard','niche'] as const).map(runSimulation);
-                      setSimResults(results);
-                      setSimRunning(false);
-                    }}
-                    className="shrink-0 px-4 py-2 rounded-lg bg-sky-400 text-black text-xs font-black hover:bg-sky-300 transition-colors">
-                    {simRunning ? 'Running…' : 'Run Simulation'}
-                  </button>
+              {/* Status banner */}
+              <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-4 flex items-start gap-3">
+                <span className="text-lg mt-0.5">✅</span>
+                <div>
+                  <p className="text-emerald-400 text-sm font-bold">AI-only mode active — repeats are not possible</p>
+                  <p className="text-white/35 text-xs mt-1 leading-relaxed">The static question pool was removed. Every question is now freshly AI-generated and unique within your session. There is no pool to exhaust and no used-ID tracking needed.</p>
                 </div>
               </div>
 
-              {simResults && (
+              {/* How it works */}
+              <div className="rounded-2xl border border-white/8 bg-white/[0.02] p-4 space-y-4">
+                <p className="text-[10px] font-mono text-white/30 uppercase tracking-widest">How the pipeline works</p>
+
                 <div className="space-y-3">
-                  {simResults.map(r => {
-                    const tierColors: Record<Tier, string> = { easy: '#34d399', medium: '#38bdf8', hard: '#c084fc', niche: '#facc15' };
-                    const color = tierColors[r.tier];
-                    const totalPool = r.compTotal + (r.tier !== 'easy' ? r.gauntTotal : 0) + (r.tier === 'niche' ? r.draftTotal : 0);
-                    const totalUsed = r.compUsed + (r.tier !== 'easy' ? r.gauntUsed : 0) + (r.tier === 'niche' ? r.draftUsed : 0);
-                    const totalRemaining = totalPool - totalUsed;
-                    const exhaustPct = totalPool > 0 ? Math.round((totalUsed / totalPool) * 100) : 0;
-                    return (
-                      <div key={r.tier} className="rounded-2xl border border-white/8 bg-white/[0.02] p-4 space-y-3">
-                        {/* Tier header */}
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm font-black uppercase tracking-wide" style={{ color }}>{r.tier}</span>
-                          <div className="flex items-center gap-2">
-                            <span className="text-[10px] font-mono text-white/30">{totalUsed}/{totalPool} used</span>
-                            <button
-                              onClick={() => { clearUsedForTier(r.tier); setSimResults(prev => prev ? prev.map(x => x.tier === r.tier ? runSimulation(r.tier) : x) : null); }}
-                              className="text-[9px] font-mono text-red-400/60 border border-red-500/20 rounded px-1.5 py-0.5 hover:bg-red-500/10 transition-colors">
-                              Clear Used
-                            </button>
-                          </div>
-                        </div>
+                  <div className="flex gap-3 items-start">
+                    <div className="w-5 h-5 rounded-full bg-sky-400/20 border border-sky-400/30 flex items-center justify-center shrink-0 mt-0.5">
+                      <span className="text-[9px] font-black text-sky-400">1</span>
+                    </div>
+                    <div>
+                      <p className="text-white/60 text-xs font-bold">Pre-warm on page load</p>
+                      <p className="text-white/30 text-xs leading-relaxed mt-0.5">As soon as the page loads, the game fires 3 background fetches simultaneously: <span className="text-white/50">8 comparison questions</span> via SSE stream, <span className="text-white/50">12 gauntlet questions</span>, and <span className="text-white/50">1 draft challenge</span>. These land in in-memory buffers before you even tap Play.</p>
+                    </div>
+                  </div>
 
-                        {/* Exhaust progress bar */}
-                        <div>
-                          <div className="flex justify-between text-[10px] font-mono text-white/30 mb-1">
-                            <span>Pool exhausted</span>
-                            <span>{exhaustPct}%</span>
-                          </div>
-                          <div className="h-2 bg-white/8 rounded-full overflow-hidden">
-                            <div className="h-full rounded-full transition-all"
-                              style={{ width: `${exhaustPct}%`, background: exhaustPct > 80 ? '#f87171' : exhaustPct > 50 ? '#fb923c' : color }} />
-                          </div>
-                        </div>
+                  <div className="flex gap-3 items-start">
+                    <div className="w-5 h-5 rounded-full bg-sky-400/20 border border-sky-400/30 flex items-center justify-center shrink-0 mt-0.5">
+                      <span className="text-[9px] font-black text-sky-400">2</span>
+                    </div>
+                    <div>
+                      <p className="text-white/60 text-xs font-bold">Instant serve from buffer</p>
+                      <p className="text-white/30 text-xs leading-relaxed mt-0.5">Each question pick pulls from the in-memory buffer. No network call at question time — it&apos;s already there. The buffer auto-refills in the background whenever it drops below the threshold (3 comparisons / 6 gauntlets / 3 drafts).</p>
+                    </div>
+                  </div>
 
-                        {/* Per-type breakdown */}
-                        <div className="grid gap-2" style={{ gridTemplateColumns: r.tier === 'easy' ? '1fr' : r.tier === 'niche' ? '1fr 1fr 1fr' : '1fr 1fr' }}>
-                          {/* Comparison */}
-                          <div className="rounded-xl border border-white/6 bg-black/20 p-3">
-                            <p className="text-[10px] font-mono text-white/30 mb-1">Comparison</p>
-                            <p className="text-lg font-black" style={{ color: r.compRemaining === 0 ? '#f87171' : color }}>{r.compRemaining}</p>
-                            <p className="text-[10px] text-white/25">{r.compUsed} used / {r.compTotal} total</p>
-                          </div>
-                          {/* Gauntlet (medium/hard/niche) */}
-                          {r.tier !== 'easy' && (
-                            <div className="rounded-xl border border-white/6 bg-black/20 p-3">
-                              <p className="text-[10px] font-mono text-white/30 mb-1">Gauntlet</p>
-                              <p className="text-lg font-black" style={{ color: r.gauntRemaining === 0 ? '#f87171' : color }}>{r.gauntRemaining}</p>
-                              <p className="text-[10px] text-white/25">{r.gauntUsed} used / {r.gauntTotal} total</p>
-                            </div>
-                          )}
-                          {/* Draft (niche only) */}
-                          {r.tier === 'niche' && (
-                            <div className="rounded-xl border border-white/6 bg-black/20 p-3">
-                              <p className="text-[10px] font-mono text-white/30 mb-1">Draft</p>
-                              <p className="text-lg font-black" style={{ color: r.draftRemaining === 0 ? '#f87171' : color }}>{r.draftRemaining}</p>
-                              <p className="text-[10px] text-white/25">{r.draftUsed} used / {r.draftTotal} total</p>
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Repeat analysis */}
-                        <div className="rounded-xl border border-white/6 bg-black/20 px-3 py-2.5 flex items-center justify-between">
-                          <span className="text-[10px] font-mono text-white/35">Static questions before any repeat</span>
-                          <span className="text-sm font-black" style={{ color: totalRemaining === 0 ? '#f87171' : color }}>
-                            {totalRemaining === 0 ? '⚠️ Pool empty — auto-reset active' : `${totalRemaining} remaining`}
-                          </span>
-                        </div>
-                      </div>
-                    );
-                  })}
-
-                  <div className="rounded-xl border border-white/6 bg-black/20 px-4 py-3 space-y-3">
-                    <p className="text-[10px] font-mono text-white/30 uppercase tracking-widest">How the question pipeline works</p>
-                    <div className="space-y-2">
-                      <div className="flex gap-3 items-start">
-                        <span className="text-base">1️⃣</span>
-                        <div>
-                          <p className="text-white/60 text-xs font-bold">Static pool (shown above)</p>
-                          <p className="text-white/35 text-xs leading-relaxed">These are the hardcoded questions in the codebase. The game picks from these first, tracking used IDs in localStorage so you never repeat one until every static question has been seen. When exhausted, the used list auto-resets and cycles again.</p>
-                        </div>
-                      </div>
-                      <div className="flex gap-3 items-start">
-                        <span className="text-base">2️⃣</span>
-                        <div>
-                          <p className="text-white/60 text-xs font-bold">AI-generated questions (always take priority)</p>
-                          <p className="text-white/35 text-xs leading-relaxed">On page load, the game silently fires off AI generation in the background — 8 comparison questions, 12 gauntlet questions, and 1 draft challenge via your API routes. These land in an in-memory buffer. Whenever you start a new question, if there are any unused AI questions in the buffer, <span className="text-sky-400">they get served first</span> before any static question. AI questions are never saved to localStorage, so they only last for the current session.</p>
-                        </div>
-                      </div>
-                      <div className="flex gap-3 items-start">
-                        <span className="text-base">⚠️</span>
-                        <div>
-                          <p className="text-white/60 text-xs font-bold">Why the sim shows low numbers</p>
-                          <p className="text-white/35 text-xs leading-relaxed">The static counts above are a floor — in practice, most players will see AI questions first and never exhaust static. The sim is most useful for seeing how many sessions a player can have before cycling, assuming AI generation fails.</p>
-                        </div>
-                      </div>
+                  <div className="flex gap-3 items-start">
+                    <div className="w-5 h-5 rounded-full bg-yellow-400/20 border border-yellow-400/30 flex items-center justify-center shrink-0 mt-0.5">
+                      <span className="text-[9px] font-black text-yellow-400">3</span>
+                    </div>
+                    <div>
+                      <p className="text-white/60 text-xs font-bold">If buffer is empty (generation too slow)</p>
+                      <p className="text-white/30 text-xs leading-relaxed mt-0.5">The player sees <span className="text-white/50">&ldquo;AI is cooking up a fresh one…&rdquo;</span> with a live step indicator. The game auto-advances the moment the next question arrives — no tap needed. This only happens if generation takes longer than the time it took to answer the previous question.</p>
                     </div>
                   </div>
                 </div>
-              )}
+              </div>
+
+              {/* What could still cause a repeat */}
+              <div className="rounded-2xl border border-orange-500/15 bg-orange-500/5 p-4 space-y-3">
+                <p className="text-[10px] font-mono text-orange-400/60 uppercase tracking-widest">Only remaining risk: within-session AI duplicates</p>
+                <p className="text-white/35 text-xs leading-relaxed">
+                  The AI model could theoretically generate the same matchup twice in one session (e.g. LeBron vs Jordan appears in both the initial pre-warm batch and a later refill). This is handled by the <span className="text-white/55">seenGauntletAnswers</span> dedup set for gauntlets, but not yet for comparison questions. To fully close this gap, the comparison generator would need to receive the list of already-served matchups as context.
+                </p>
+                <p className="text-white/25 text-xs">Check the AI Pipeline tab to see if any generation runs are producing errors or near-duplicate content.</p>
+              </div>
             </div>
           )}
 
