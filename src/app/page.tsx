@@ -185,7 +185,7 @@ export default function Home() {
     setLoadingStep('Connecting...');
     try {
       await new Promise<void>((resolve, reject) => {
-        const es = new EventSource(`/api/generate-question/stream?difficulty=${difficulty}&count=8`);
+        const es = new EventSource(`/api/generate-question/stream?difficulty=${difficulty}&count=8&seenMatchups=${encodeURIComponent(JSON.stringify([...seenCompMatchups.current]))}`);
 
         es.addEventListener('step', (e) => {
           const d = JSON.parse(e.data) as { id: string; msg: string };
@@ -213,7 +213,14 @@ export default function Home() {
             valueB: Number(q.valueB ?? 0),
             unit: String(q.unit ?? ''),
             difficulty: (q.difficulty as Question['difficulty']) ?? 'medium',
-          })).filter((q: Question) => q.valueA !== q.valueB && q.playerA.name && q.playerB.name);
+          })).filter((q: Question) => {
+            if (q.valueA === q.valueB || !q.playerA.name || !q.playerB.name) return false;
+            // Deduplicate: skip matchups already seen this session
+            const key1 = `${q.playerA.id}|${q.playerB.id}`;
+            const key2 = `${q.playerB.id}|${q.playerA.id}`;
+            if (seenCompMatchups.current.has(key1) || seenCompMatchups.current.has(key2)) return false;
+            return true;
+          });
           if (qs.length > 0) setAiBuffer(prev => [...prev, ...qs]);
           resolve();
         });
@@ -233,6 +240,7 @@ export default function Home() {
   }, [fetchingAi]);
 
   const seenGauntletAnswers = useRef<Set<string>>(new Set());
+  const seenCompMatchups    = useRef<Set<string>>(new Set());
   const gauntletPrewarmed   = useRef(false);
 
   const fetchAiGauntlet = useCallback(async (difficulty: string) => {
@@ -455,8 +463,14 @@ export default function Home() {
     if (currentQ?.id) newUsed.add(currentQ.id);
     setUsedIds(newUsed);
     try { localStorage.setItem(`ykb_used_${selectedTier}`, JSON.stringify([...newUsed])); } catch { }
-    // Drain used questions from ALL AI buffers
+    // Drain used questions from ALL AI buffers; track served comparison matchups for dedup
     if (currentQ?.type === 'comparison' && currentQ.id) {
+      const aId = currentQ.data.playerA.id;
+      const bId = currentQ.data.playerB.id;
+      if (aId && bId) {
+        seenCompMatchups.current.add(`${aId}|${bId}`);
+        seenCompMatchups.current.add(`${bId}|${aId}`);
+      }
       setAiBuffer(prev => prev.filter(q => q.id !== currentQ.id));
     }
     if (currentQ?.type === 'gauntlet' && currentQ.id) {

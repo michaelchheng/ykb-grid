@@ -339,12 +339,20 @@ function buildTemplatedQuestions(matchups: MatchupData[], difficulty: string): R
 
 // ── Main POST handler ──────────────────────────────────────────────────────────
 export async function POST(req: NextRequest) {
-  const { difficulty = 'medium', count = 5 } = await req.json().catch(() => ({}));
+  const { difficulty = 'medium', count = 5, seenMatchups = [] } = await req.json().catch(() => ({}));
+  const seenSet = new Set<string>(seenMatchups as string[]);
 
   // Serve from cache only when there's a surplus — exact-count hits get fresh questions
   // This prevents two back-to-back requests from serving the same batch
   const cacheKey = difficulty;
-  const cached = qCache.get(cacheKey) ?? [];
+  const cached = (qCache.get(cacheKey) ?? []).filter((q) => {
+    const qr = q as Record<string, unknown>;
+    const aId = String((qr.playerA as Record<string,unknown>)?.id ?? '');
+    const bId = String((qr.playerB as Record<string,unknown>)?.id ?? '');
+    const key1 = `${aId}|${bId}`, key2 = `${bId}|${aId}`;
+    return !seenSet.has(key1) && !seenSet.has(key2);
+  });
+  qCache.set(cacheKey, cached);
   if (cached.length > count + 2) {
     const batch = cached.splice(0, count);
     qCache.set(cacheKey, cached);
@@ -384,7 +392,12 @@ export async function POST(req: NextRequest) {
   const matchups: MatchupData[] = fetchResults
     .filter((r): r is PromiseFulfilledResult<MatchupData | null> => r.status === 'fulfilled')
     .map(r => r.value)
-    .filter((v): v is MatchupData => v !== null);
+    .filter((v): v is MatchupData => v !== null)
+    .filter(m => {
+      const key1 = `${m.playerA.playerId}|${m.playerB.playerId}`;
+      const key2 = `${m.playerB.playerId}|${m.playerA.playerId}`;
+      return !seenSet.has(key1) && !seenSet.has(key2);
+    });
 
   if (matchups.length === 0) {
     console.error('NBA API returned no usable matchups');

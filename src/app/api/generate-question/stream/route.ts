@@ -24,6 +24,7 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const difficulty = searchParams.get('difficulty') ?? 'medium';
   const count = parseInt(searchParams.get('count') ?? '8', 10);
+  const seenMatchups: string[] = JSON.parse(searchParams.get('seenMatchups') ?? '[]');
 
   const host = req.headers.get('host') ?? 'localhost:3000';
   const proto = host.startsWith('localhost') ? 'http' : 'https';
@@ -47,7 +48,7 @@ export async function GET(req: NextRequest) {
         const res = await fetch(`${baseUrl}/api/generate-question`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ difficulty, count }),
+          body: JSON.stringify({ difficulty, count, seenMatchups }),
           signal: AbortSignal.timeout(45000),
         });
 
