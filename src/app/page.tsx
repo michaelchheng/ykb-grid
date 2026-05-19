@@ -995,41 +995,45 @@ export default function Home() {
       </div>
 
       {/* Streak + Shield bar */}
-      <div className="border-b border-white/4 px-5 py-3 flex items-center justify-between gap-4">
-        {/* Streak */}
-        <div className="flex items-center gap-2">
-          <span className="text-3xl font-black tabular-nums leading-none" style={{
-            color: streak === 0 ? 'rgba(255,255,255,0.2)' : streak >= 20 ? '#facc15' : streak >= 10 ? '#f97316' : '#38bdf8'
-          }}>{streak}</span>
-          <div>
-            <p className="text-[9px] font-mono text-white/25 uppercase tracking-widest leading-none">streak</p>
-            <p className="text-[9px] font-mono text-white/20 leading-none mt-0.5">
-              🔥 {streak === 0 ? 'answer one' : streak === 1 ? '1 in a row' : `${streak} in a row`}
-            </p>
-          </div>
-        </div>
-
-        {/* Shield progress */}
-        <div className="flex-1 max-w-[160px]">
-          <div className="flex items-center justify-between mb-1">
-            <p className="text-[9px] font-mono text-white/25 uppercase tracking-widest">shields</p>
-            <div className="flex gap-1">
-              {[0, 1].map(i => (
-                <span key={i} className={`text-sm transition-all ${i < shields && shieldFlash && i === shields - 1 ? 'animate-pulse' : ''}`}
-                  style={{ filter: i < shields ? 'none' : 'grayscale(1)', opacity: i < shields ? 1 : 0.2 }}>🛡️</span>
-              ))}
+      <div className="border-b border-white/4 px-5 py-3 flex items-center justify-center">
+        <div className="flex items-center gap-5">
+          {/* Streak */}
+          <div className="flex items-center gap-2">
+            <span className="text-3xl font-black tabular-nums leading-none" style={{
+              color: streak === 0 ? 'rgba(255,255,255,0.2)' : streak >= 20 ? '#facc15' : streak >= 10 ? '#f97316' : '#38bdf8'
+            }}>{streak}</span>
+            <div>
+              <p className="text-[9px] font-mono text-white/25 uppercase tracking-widest leading-none">streak</p>
+              <p className="text-[9px] font-mono text-white/20 leading-none mt-0.5">
+                🔥 {streak === 0 ? 'answer one' : streak === 1 ? '1 in a row' : `${streak} in a row`}
+              </p>
             </div>
           </div>
-          <div className="h-1.5 bg-white/8 rounded-full overflow-hidden">
-            <div className="h-full rounded-full transition-all duration-500"
-              style={{
-                width: shields >= 2 ? '100%' : `${(shieldProgress / 10) * 100}%`,
-                background: shields >= 2 ? '#38bdf8' : shieldProgress >= 7 ? '#38bdf8' : shieldProgress >= 4 ? '#c084fc' : 'rgba(255,255,255,0.25)'
-              }} />
+
+          <div className="w-px h-8 bg-white/8" />
+
+          {/* Shield progress */}
+          <div className="w-40">
+            <div className="flex items-center justify-between mb-1">
+              <p className="text-[9px] font-mono text-white/25 uppercase tracking-widest">shields</p>
+              <div className="flex gap-1">
+                {[0, 1].map(i => (
+                  <span key={i} className={`text-sm transition-all ${i < shields && shieldFlash && i === shields - 1 ? 'animate-pulse' : ''}`}
+                    style={{ filter: i < shields ? 'none' : 'grayscale(1)', opacity: i < shields ? 1 : 0.2 }}>🛡️</span>
+                ))}
+              </div>
+            </div>
+            <div className="h-1.5 bg-white/8 rounded-full overflow-hidden">
+              <div className="h-full rounded-full transition-all duration-500"
+                style={{
+                  width: shields >= 2 ? '100%' : `${(shieldProgress / 10) * 100}%`,
+                  background: shields >= 2 ? '#38bdf8' : shieldProgress >= 7 ? '#38bdf8' : shieldProgress >= 4 ? '#c084fc' : 'rgba(255,255,255,0.25)'
+                }} />
+            </div>
+            <p className="text-[8px] font-mono text-white/20 mt-0.5">
+              {shields >= 2 ? 'full' : `${shieldProgress}/10 → next shield`}
+            </p>
           </div>
-          <p className="text-[8px] font-mono text-white/20 mt-0.5">
-            {shields >= 2 ? 'full' : `${shieldProgress}/10 → next shield`}
-          </p>
         </div>
       </div>
 
