@@ -234,17 +234,19 @@ function pickPair(
   let idxA: number, idxB: number;
   switch (difficulty) {
     case 'easy':
-      // playerA = true star (top 10 only), playerB = deep bench (bottom 40%)
-      idxA = Math.floor(r() * Math.min(10, Math.floor(n * 0.08)));
-      idxB = Math.min(n - 1, Math.floor(n * 0.60) + Math.floor(r() * Math.floor(n * 0.35)));
+      // Star vs. clear bench — top 5% vs bottom 50%
+      idxA = Math.floor(r() * Math.max(1, Math.floor(n * 0.05)));
+      idxB = Math.floor(n * 0.50) + Math.floor(r() * Math.floor(n * 0.45));
       break;
     case 'medium':
-      idxA = Math.floor(r() * Math.min(20, Math.floor(n * 0.25)));
-      idxB = Math.min(n - 1, Math.floor(n * 0.35) + Math.floor(r() * Math.floor(n * 0.30)));
+      // Recognizable player vs. mid-tier — top 25% vs 40–75%
+      idxA = Math.floor(r() * Math.floor(n * 0.25));
+      idxB = Math.floor(n * 0.40) + Math.floor(r() * Math.floor(n * 0.35));
       break;
     case 'hard':
-      idxA = Math.floor(r() * Math.min(20, Math.floor(n * 0.40)));
-      idxB = Math.min(n - 1, idxA + 1 + Math.floor(r() * 4));
+      // Two players close in rank — within 3 spots of each other in top 60%
+      idxA = Math.floor(r() * Math.floor(n * 0.60));
+      idxB = Math.min(n - 1, idxA + 1 + Math.floor(r() * 3));
       break;
     default:
       idxA = 0; idxB = Math.min(5, n - 1);
