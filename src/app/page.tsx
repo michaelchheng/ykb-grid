@@ -184,18 +184,17 @@ export default function Home() {
     setMounted(true);
   }, []);
 
-  const fetchAiQuestions = useCallback(async (difficulty: string) => {
+  const fetchAiQuestions = useCallback(async (difficulty: string, showLoading = false) => {
     if (fetchingAiTiers.current.has(difficulty)) return;
     fetchingAiTiers.current.add(difficulty);
-    // Only show loading UI if this is the active tier
-    if (difficulty === selectedTier) { setFetchingAi(true); setLoadingStep('Connecting...'); }
+    if (showLoading && difficulty === selectedTier) { setFetchingAi(true); setLoadingStep('Connecting...'); }
     try {
       await new Promise<void>((resolve, reject) => {
-        const es = new EventSource(`/api/generate-question/stream?difficulty=${difficulty}&count=8&seenMatchups=${encodeURIComponent(JSON.stringify([...seenCompMatchups.current]))}`);
+        const es = new EventSource(`/api/generate-question/stream?difficulty=${difficulty}&count=12&seenMatchups=${encodeURIComponent(JSON.stringify([...seenCompMatchups.current]))}`);
 
         es.addEventListener('step', (e) => {
           const d = JSON.parse(e.data) as { id: string; msg: string };
-          if (difficulty === selectedTier) setLoadingStep(d.msg);
+          if (showLoading && difficulty === selectedTier) setLoadingStep(d.msg);
         });
 
         es.addEventListener('result', (e) => {
@@ -341,7 +340,7 @@ export default function Home() {
     if (!q) {
       setWaitingForAi(true);
       setGameState('playing');
-      fetchAiQuestions(selectedTier);
+      fetchAiQuestions(selectedTier, true);
       fetchAiGauntlet(selectedTier);
       fetchAiDraft(selectedTier);
       return;
@@ -491,7 +490,7 @@ export default function Home() {
     if (!q) {
       setWaitingForAi(true);
       setGameState('playing');
-      fetchAiQuestions(selectedTier);
+      fetchAiQuestions(selectedTier, true); // show loading — buffer is empty
       fetchAiGauntlet(selectedTier);
       fetchAiDraft(selectedTier);
       return;
@@ -500,10 +499,10 @@ export default function Home() {
     resetAnswerState(q);
     gauntletQuestionStartMs.current = Date.now();
     setGameState('playing');
-    // Always kick off background refill — fetchingAi guard prevents double-fetching
-    if (aiBuffer.length < 6) fetchAiQuestions(selectedTier);
-    if (aiGauntletBuffer.length < 8) fetchAiGauntlet(selectedTier);
-    if (aiDraftBuffer.length < 3) fetchAiDraft(selectedTier);
+    // Background refill — no loading spinner
+    if (aiBuffer.length < 3) fetchAiQuestions(selectedTier);
+    if (aiGauntletBuffer.length < 4) fetchAiGauntlet(selectedTier);
+    if (aiDraftBuffer.length < 2) fetchAiDraft(selectedTier);
   }
 
 
