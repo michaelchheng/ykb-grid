@@ -122,7 +122,9 @@ export default function Home() {
   const [aiBuffer, setAiBuffer]               = useState<Question[]>([]);
   const [aiGauntletBuffer, setAiGauntletBuffer] = useState<GauntletQuestion[]>([]);
   const [aiDraftBuffer, setAiDraftBuffer]         = useState<DraftChallenge[]>([]);
-  const [fetchingAi, setFetchingAi]           = useState(false);
+  const fetchingAiTiers                       = useRef<Set<string>>(new Set());
+  const aiBuffersByTier                       = useRef<Map<string, Question[]>>(new Map());
+  const [fetchingAi, setFetchingAi]           = useState(false); // kept for loading screen
   const [loadingStep, setLoadingStep]         = useState<string | null>(null);
   const [waitingForAi, setWaitingForAi]       = useState(false);
 
@@ -141,6 +143,9 @@ export default function Home() {
       const saved = localStorage.getItem(`ykb_used_${selectedTier}`);
       setUsedIds(saved ? new Set(JSON.parse(saved) as string[]) : new Set());
     } catch { setUsedIds(new Set()); }
+    // Swap in the cached buffer for this tier (may be empty if not yet fetched)
+    setAiBuffer(aiBuffersByTier.current.get(selectedTier) ?? []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedTier]);
 
   const { submitVote, voteData, getVotes, submitScore } = useSocket();
@@ -180,16 +185,17 @@ export default function Home() {
   }, []);
 
   const fetchAiQuestions = useCallback(async (difficulty: string) => {
-    if (fetchingAi) return;
-    setFetchingAi(true);
-    setLoadingStep('Connecting...');
+    if (fetchingAiTiers.current.has(difficulty)) return;
+    fetchingAiTiers.current.add(difficulty);
+    // Only show loading UI if this is the active tier
+    if (difficulty === selectedTier) { setFetchingAi(true); setLoadingStep('Connecting...'); }
     try {
       await new Promise<void>((resolve, reject) => {
         const es = new EventSource(`/api/generate-question/stream?difficulty=${difficulty}&count=8&seenMatchups=${encodeURIComponent(JSON.stringify([...seenCompMatchups.current]))}`);
 
         es.addEventListener('step', (e) => {
           const d = JSON.parse(e.data) as { id: string; msg: string };
-          setLoadingStep(d.msg);
+          if (difficulty === selectedTier) setLoadingStep(d.msg);
         });
 
         es.addEventListener('result', (e) => {
@@ -215,29 +221,30 @@ export default function Home() {
             difficulty: (q.difficulty as Question['difficulty']) ?? 'medium',
           })).filter((q: Question) => {
             if (q.valueA === q.valueB || !q.playerA.name || !q.playerB.name) return false;
-            // Deduplicate: skip matchups already seen this session
             const key1 = `${q.playerA.id}|${q.playerB.id}`;
             const key2 = `${q.playerB.id}|${q.playerA.id}`;
             if (seenCompMatchups.current.has(key1) || seenCompMatchups.current.has(key2)) return false;
             return true;
           });
-          if (qs.length > 0) setAiBuffer(prev => [...prev, ...qs]);
+          if (qs.length > 0) {
+            // Store in per-tier cache
+            const prev = aiBuffersByTier.current.get(difficulty) ?? [];
+            aiBuffersByTier.current.set(difficulty, [...prev, ...qs]);
+            // Only update reactive state if this is still the active tier
+            if (difficulty === selectedTier) setAiBuffer(b => [...b, ...qs]);
+          }
           resolve();
         });
 
-        es.addEventListener('error', () => {
-          es.close();
-          reject(new Error('SSE error'));
-        });
-
-        // Safety timeout
+        es.addEventListener('error', () => { es.close(); reject(new Error('SSE error')); });
         setTimeout(() => { es.close(); resolve(); }, 50000);
       });
     } catch { /* silent */ } finally {
-      setFetchingAi(false);
-      setLoadingStep(null);
+      fetchingAiTiers.current.delete(difficulty);
+      if (difficulty === selectedTier) { setFetchingAi(false); setLoadingStep(null); }
     }
-  }, [fetchingAi]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedTier]);
 
   const seenGauntletAnswers = useRef<Set<string>>(new Set());
   const seenCompMatchups    = useRef<Set<string>>(new Set());
@@ -276,18 +283,18 @@ export default function Home() {
     } catch { /* silent */ }
   }, []);
 
-  // Pre-warm ALL buffers on mount — comparisons, gauntlet, draft
+  // Pre-warm ALL tiers in parallel on mount so switching is instant
   useEffect(() => {
     if (gauntletPrewarmed.current) return;
     gauntletPrewarmed.current = true;
-    // Fire all three in parallel so they're ready before the user hits Start
-    fetchAiQuestions(selectedTier);
+    draftPrewarmed.current = true;
+    (['easy','medium','hard','niche'] as const).forEach(t => fetchAiQuestions(t));
     fetchAiGauntlet(selectedTier);
     fetchAiDraft(selectedTier);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Pre-warm AI draft buffer on mount (already handled above, keep ref in sync)
+  // Keep ref in sync (no-op now, handled above)
   useEffect(() => {
     draftPrewarmed.current = true;
   // eslint-disable-next-line react-hooks/exhaustive-deps
