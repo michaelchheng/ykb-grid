@@ -16,7 +16,7 @@ import {
 // ── Ball IQ ranks by best streak ──────────────────────────────────────────────
 const BALL_IQ_RANKS = [
   { label: 'Casual',              color: '#6b7280', minStreak: 0  },
-  { label: 'Hooper',              color: '#38bdf8', minStreak: 4  },
+  { label: 'Hooper',              color: '#f97316', minStreak: 4  },
   { label: 'Film Room',           color: '#c084fc', minStreak: 10 },
   { label: 'Elite Ball Knowledge',color: '#f97316', minStreak: 18 },
   { label: 'Niche',               color: '#facc15', minStreak: 28 },
@@ -539,7 +539,7 @@ export default function Home() {
             <div className="rounded-2xl border border-white/8 bg-white/[0.03] px-8 pt-8 pb-6 text-center"
               style={{ boxShadow: '0 0 60px rgba(250,204,21,0.06) inset' }}>
               <h1 className="text-[clamp(2.8rem,12vw,5rem)] font-black tracking-tighter leading-[0.9] text-white mb-3">
-                Do You<br /><span style={{ color: '#38bdf8' }}>Know Ball?</span>
+                Do You<br /><span style={{ color: '#f97316' }}>Know Ball?</span>
               </h1>
               <p className="text-white/40 text-sm font-medium mt-4">NBA stats trivia — daily knowledge challenge</p>
             </div>
@@ -556,7 +556,7 @@ export default function Home() {
             </button>
             {isAdmin && (
               <button onClick={() => setShowAdminDrawer(true)}
-                className="text-[9px] font-sans text-sky-300/60 border border-sky-400/30 rounded px-1.5 py-0.5 hover:bg-sky-400/10 transition-colors">
+                className="text-[9px] font-sans text-orange-300/60 border border-orange-400/30 rounded px-1.5 py-0.5 hover:bg-orange-400/10 transition-colors">
                 ADMIN
               </button>
             )}
@@ -573,7 +573,7 @@ export default function Home() {
             <div className="flex items-center justify-center gap-10 mb-8">
               {todayS > 0 && (
                 <div className="text-center">
-                  <p className="text-6xl font-black tabular-nums leading-none" style={{ color: '#38bdf8' }}>{todayS} 🔥</p>
+                  <p className="text-6xl font-black tabular-nums leading-none" style={{ color: '#f97316' }}>{todayS} 🔥</p>
                   <p className="text-xs text-white/45 mt-2 font-medium">today&apos;s streak</p>
                 </div>
               )}
@@ -590,9 +590,9 @@ export default function Home() {
           <div className="grid grid-cols-4 gap-2 mb-6">
             {([
               { id: 'easy',     label: 'Easy',   color: '#34d399' },
-              { id: 'medium',   label: 'Medium', color: '#38bdf8' },
+              { id: 'medium',   label: 'Medium', color: '#f97316' },
               { id: 'hard',     label: 'Hard',   color: '#c084fc' },
-              { id: 'niche', label: 'Niche',  color: '#38bdf8' },
+              { id: 'niche', label: 'Niche',  color: '#f97316' },
             ] as const).map(t => (
               <button key={t.id} onClick={() => setSelectedTier(t.id)}
                 className="rounded-xl border p-3 text-center transition-all"
@@ -614,13 +614,13 @@ export default function Home() {
           ) : (
             <>
               <button onClick={startGame}
-                className="w-full py-5 rounded-2xl bg-sky-400 text-black font-black text-xl hover:bg-sky-300 transition-all active:scale-[0.98] shadow-lg shadow-sky-400/20"
+                className="w-full py-5 rounded-2xl bg-orange-400 text-black font-black text-xl hover:bg-orange-300 transition-all active:scale-[0.98] shadow-lg shadow-orange-400/20"
                 style={{ marginBottom: fetchingAi && loadingStep ? '12px' : '32px' }}>
                 Start
               </button>
               {fetchingAi && loadingStep && (
                 <div className="flex items-center justify-center gap-2 mb-8 text-xs text-white/40 font-mono">
-                  <span className="w-1.5 h-1.5 rounded-full bg-sky-400 animate-pulse shrink-0" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-orange-400 animate-pulse shrink-0" />
                   {loadingStep}
                 </div>
               )}
@@ -639,9 +639,9 @@ export default function Home() {
               <div className="space-y-2">
                 {([
                   { id: 'easy'     as const, label: 'Easy',   color: '#34d399' },
-                  { id: 'medium'   as const, label: 'Medium', color: '#38bdf8' },
+                  { id: 'medium'   as const, label: 'Medium', color: '#f97316' },
                   { id: 'hard'     as const, label: 'Hard',   color: '#c084fc' },
-                  { id: 'niche' as const, label: 'Niche',  color: '#38bdf8' },
+                  { id: 'niche' as const, label: 'Niche',  color: '#f97316' },
                 ]).map(t => {
                   const tLocked  = isLockedOut(t.id);
                   const tStreak  = getTodayStreak(t.id);
@@ -746,10 +746,10 @@ export default function Home() {
                 <p className="text-xs font-semibold text-white/50 mb-2">Stats</p>
                 <div className="space-y-2">
                   {[
-                    { label: 'Best Streak',    value: String(best),                                              color: '#38bdf8' },
+                    { label: 'Best Streak',    value: String(best),                                              color: '#f97316' },
                     { label: "Today's Streak", value: String(todayS),                                           color: '#34d399' },
                     { label: 'Total Answered', value: localStorage.getItem(`ykb_total_${selectedTier}`)   || '0', color: '#818cf8' },
-                    { label: 'Total Correct',  value: localStorage.getItem(`ykb_correct_${selectedTier}`) || '0', color: '#38bdf8' },
+                    { label: 'Total Correct',  value: localStorage.getItem(`ykb_correct_${selectedTier}`) || '0', color: '#f97316' },
                   ].map(s => (
                     <div key={s.label} className="flex items-center justify-between rounded-lg border border-white/6 bg-white/[0.02] px-3 py-2.5">
                       <span className="text-xs text-white/50 font-medium">{s.label}</span>
@@ -782,7 +782,7 @@ export default function Home() {
           <div className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm" onClick={() => setShowAdminDrawer(false)} />
           <div className="fixed top-0 right-0 h-full w-72 z-50 bg-[#0f0f18] border-l border-white/10 flex flex-col shadow-2xl">
             <div className="flex items-center justify-between px-5 py-4 border-b border-white/8">
-              <p className="text-[10px] font-sans text-sky-300/60 uppercase tracking-widest">Admin</p>
+              <p className="text-[10px] font-sans text-orange-300/60 uppercase tracking-widest">Admin</p>
               <button onClick={() => setShowAdminDrawer(false)} className="text-white/30 hover:text-white/70 text-lg">&#x2715;</button>
             </div>
             <div className="flex-1 px-5 py-6 space-y-3">
@@ -814,7 +814,7 @@ export default function Home() {
     <div className="min-h-screen bg-[#08080d] text-white flex items-center justify-center px-5">
       <div className="max-w-sm w-full text-center">
         <p className="text-xs text-white/40 font-medium mb-5">Locked Until Midnight</p>
-        <p className="text-8xl font-black tabular-nums mb-2" style={{ color: '#38bdf8' }}>{getTodayStreak(selectedTier)}</p>
+        <p className="text-8xl font-black tabular-nums mb-2" style={{ color: '#f97316' }}>{getTodayStreak(selectedTier)}</p>
         <p className="text-white/40 text-sm mb-8">your streak today</p>
 
         <div className="rounded-xl border border-white/8 bg-white/[0.03] px-4 py-3 mb-3">
@@ -834,7 +834,7 @@ export default function Home() {
     <div className="min-h-screen bg-[#08080d] text-white flex items-center justify-center px-5">
       <div className="max-w-sm w-full text-center">
         <p className="text-2xl font-black text-red-500 mb-5">You do not know ball.</p>
-        <p className="text-8xl font-black tabular-nums leading-none mb-1" style={{ color: '#38bdf8' }}>{streak}</p>
+        <p className="text-8xl font-black tabular-nums leading-none mb-1" style={{ color: '#f97316' }}>{streak}</p>
         <p className="text-white/50 text-base font-semibold mb-1">streak ended</p>
         {getBest() > streak && <p className="text-white/30 text-sm mb-2">best ever: <span className="font-bold text-white/50">{getBest()}</span></p>}
 
@@ -850,7 +850,7 @@ export default function Home() {
                 <>
                   <p className="text-xs text-white/40 font-medium mb-3">{q.label}</p>
                   <div className="flex gap-4 mb-3">
-                    <div><p className="text-xs text-white/40">{winner.name}</p><p className="text-2xl font-black text-sky-300">{formatValue(winV, q.unit)}</p></div>
+                    <div><p className="text-xs text-white/40">{winner.name}</p><p className="text-2xl font-black text-orange-300">{formatValue(winV, q.unit)}</p></div>
                     <div><p className="text-xs text-white/40">{loser.name}</p><p className="text-2xl font-black text-red-400">{formatValue(loseV, q.unit)}</p></div>
                   </div>
                   {q.flavor && <p className="text-white/35 text-xs italic">&ldquo;{q.flavor}&rdquo;</p>}
@@ -881,7 +881,7 @@ export default function Home() {
           </div>
         )}
         <button onClick={() => watchAd('streak')}
-          className="w-full py-4 rounded-2xl bg-sky-400 text-black font-black text-base hover:bg-sky-300 transition-all active:scale-[0.98] mb-3 shadow-lg shadow-sky-400/20">
+          className="w-full py-4 rounded-2xl bg-orange-400 text-black font-black text-base hover:bg-orange-300 transition-all active:scale-[0.98] mb-3 shadow-lg shadow-orange-400/20">
           📺 Watch an ad — save your streak
         </button>
         <p className="text-white/25 text-xs mb-6">One lifeline per day. Resets at midnight.</p>
@@ -892,7 +892,7 @@ export default function Home() {
             Hub
           </button>
           <a href="/leaderboard"
-            className="px-6 py-3 rounded-xl bg-sky-400 text-black font-black text-sm hover:bg-sky-300 transition-colors">
+            className="px-6 py-3 rounded-xl bg-orange-400 text-black font-black text-sm hover:bg-orange-300 transition-colors">
             Leaderboard
           </a>
         </div>
@@ -917,7 +917,7 @@ export default function Home() {
               data-full-width-responsive="true"
             />
             <button onClick={() => setAdPopup(null)}
-              className="mt-4 w-full py-3 rounded-xl bg-sky-400 text-black font-black text-sm hover:bg-sky-300 transition-all">
+              className="mt-4 w-full py-3 rounded-xl bg-orange-400 text-black font-black text-sm hover:bg-orange-300 transition-all">
               Continue
             </button>
           </div>
@@ -932,7 +932,7 @@ export default function Home() {
       {/* Ambient orbs */}
       <div className="absolute inset-0 pointer-events-none">
         <div className="absolute top-1/4 left-1/4 w-64 h-64 rounded-full opacity-10 animate-pulse"
-          style={{ background: 'radial-gradient(circle, #38bdf8, transparent)', filter: 'blur(40px)', animationDuration: '2s' }} />
+          style={{ background: 'radial-gradient(circle, #f97316, transparent)', filter: 'blur(40px)', animationDuration: '2s' }} />
         <div className="absolute bottom-1/4 right-1/4 w-48 h-48 rounded-full opacity-8 animate-pulse"
           style={{ background: 'radial-gradient(circle, #c084fc, transparent)', filter: 'blur(50px)', animationDuration: '3s', animationDelay: '1s' }} />
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 rounded-full opacity-5 animate-pulse"
@@ -952,7 +952,7 @@ export default function Home() {
       {/* Steps */}
       <div className="relative z-10 text-center space-y-2">
         <p className="font-bold text-xl tracking-tight">
-          {loadingStep === 'Pulling NBA stats...'   && <span className="text-sky-400">Pulling NBA stats</span>}
+          {loadingStep === 'Pulling NBA stats...'   && <span className="text-orange-400">Pulling NBA stats</span>}
           {loadingStep === 'Finding matchups...'    && <span className="text-purple-400">Finding matchups</span>}
           {loadingStep === 'Writing flavor text...' && <span className="text-yellow-400">Crafting the question</span>}
           {loadingStep === 'Grading question quality...' && <span className="text-emerald-400">Grading quality</span>}
@@ -1003,29 +1003,29 @@ export default function Home() {
         ) : <div className="w-10" />}
       </div>
 
-      {/* Streak + Shield — compact strip, right under the nav */}
-      <div className="px-5 py-2 flex items-center justify-center gap-5 border-b border-white/4">
-        <div className="flex items-center gap-2">
-          <span className="text-3xl font-black tabular-nums leading-none" style={{
+      {/* Streak + Shield — bigger, centered, floating feel */}
+      <div className="px-5 py-3 flex items-center justify-center gap-6 border-b border-white/4">
+        <div className="flex items-center gap-3">
+          <span className="text-5xl font-black tabular-nums leading-none" style={{
             color: streak === 0 ? 'rgba(255,255,255,0.15)' : streak >= 20 ? '#facc15' : streak >= 10 ? '#f97316' : '#fb923c'
           }}>{streak}</span>
           <div className="flex flex-col leading-tight">
-            <span className="text-[9px] font-bold text-white/25 uppercase tracking-widest">Streak</span>
-            <span className="text-[10px] text-white/35">{streak === 0 ? 'get one right' : `${streak} in a row 🔥`}</span>
+            <span className="text-[10px] font-bold text-white/30 uppercase tracking-widest">Streak</span>
+            <span className="text-xs text-white/45">{streak === 0 ? 'get one right' : `${streak} in a row 🔥`}</span>
           </div>
         </div>
-        <div className="w-px h-7 bg-white/10" />
+        <div className="w-px h-8 bg-white/10" />
         <div className="w-44">
           <div className="flex items-center justify-between mb-1">
             <span className="text-[9px] font-bold text-white/25 uppercase tracking-widest">Shields</span>
             <div className="flex gap-1">
               {[0, 1].map(i => (
-                <span key={i} className={`text-xs transition-all ${i < shields && shieldFlash && i === shields - 1 ? 'animate-pulse' : ''}`}
+                <span key={i} className={`text-sm transition-all ${i < shields && shieldFlash && i === shields - 1 ? 'animate-pulse' : ''}`}
                   style={{ filter: i < shields ? 'none' : 'grayscale(1)', opacity: i < shields ? 1 : 0.15 }}>🛡️</span>
               ))}
             </div>
           </div>
-          <div className="h-1 bg-white/8 rounded-full overflow-hidden">
+          <div className="h-1.5 bg-white/8 rounded-full overflow-hidden">
             <div className="h-full rounded-full transition-all duration-500"
               style={{
                 width: shields >= 2 ? '100%' : `${(shieldProgress / 10) * 100}%`,
@@ -1166,7 +1166,7 @@ export default function Home() {
             return (
               <>
                 <div className="mb-4">
-                  <p className="text-[10px] font-sans text-sky-300/60 uppercase tracking-widest mb-1">All {c.players.length} correct to continue</p>
+                  <p className="text-[10px] font-sans text-orange-300/60 uppercase tracking-widest mb-1">All {c.players.length} correct to continue</p>
                   <p className="font-black text-xl">{c.statLabel}</p>
                   <p className="text-white/35 text-xs font-sans mt-0.5">{c.season} &middot; Highest &rarr; Lowest</p>
                 </div>
@@ -1233,7 +1233,7 @@ export default function Home() {
           {isRevealed && (
             <div className="mt-6 text-center">
               <button onClick={nextQuestion}
-                className="px-10 py-3.5 rounded-xl bg-sky-400 text-black font-black text-sm hover:bg-sky-300 transition-colors active:scale-[0.98]">
+                className="px-10 py-3.5 rounded-xl bg-orange-400 text-black font-black text-sm hover:bg-orange-300 transition-colors active:scale-[0.98]">
                 Next
               </button>
             </div>
