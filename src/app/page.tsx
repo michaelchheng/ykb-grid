@@ -276,19 +276,20 @@ export default function Home() {
     } catch { /* silent */ }
   }, []);
 
-  // Pre-warm AI gauntlet buffer on mount so first gauntlet Q is always AI-generated
+  // Pre-warm ALL buffers on mount — comparisons, gauntlet, draft
   useEffect(() => {
     if (gauntletPrewarmed.current) return;
     gauntletPrewarmed.current = true;
+    // Fire all three in parallel so they're ready before the user hits Start
+    fetchAiQuestions(selectedTier);
     fetchAiGauntlet(selectedTier);
+    fetchAiDraft(selectedTier);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Pre-warm AI draft buffer on mount
+  // Pre-warm AI draft buffer on mount (already handled above, keep ref in sync)
   useEffect(() => {
-    if (draftPrewarmed.current) return;
     draftPrewarmed.current = true;
-    fetchAiDraft(selectedTier);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
