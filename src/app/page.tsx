@@ -942,7 +942,7 @@ export default function Home() {
       {/* Spinner */}
       <div className="relative mb-8">
         <div className="w-16 h-16 rounded-full border-2 border-white/5" />
-        <div className="absolute inset-0 w-16 h-16 rounded-full border-2 border-transparent border-t-sky-400 border-r-sky-400/40 animate-spin" style={{ animationDuration: '1s' }} />
+        <div className="absolute inset-0 w-16 h-16 rounded-full border-2 border-transparent border-t-orange-400 border-r-orange-400/40 animate-spin" style={{ animationDuration: '1s' }} />
         <div className="absolute inset-2 w-12 h-12 rounded-full border border-transparent border-t-purple-400/60 animate-spin" style={{ animationDuration: '1.5s', animationDirection: 'reverse' }} />
         <div className="absolute inset-0 flex items-center justify-center">
           <span className="text-xl">🏀</span>
@@ -977,7 +977,7 @@ export default function Home() {
           const active = i === stepIdx;
           return (
             <div key={i} className="w-1.5 h-1.5 rounded-full transition-all duration-300"
-              style={{ background: active ? '#38bdf8' : done ? '#38bdf8' : 'rgba(255,255,255,0.15)', opacity: done ? 0.5 : 1, transform: active ? 'scale(1.5)' : 'scale(1)' }} />
+              style={{ background: active ? '#f97316' : done ? '#f97316' : 'rgba(255,255,255,0.15)', opacity: done ? 0.5 : 1, transform: active ? 'scale(1.5)' : 'scale(1)' }} />
           );
         })}
       </div>
@@ -991,61 +991,53 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-[#08080d] text-white flex flex-col">
       {/* Top nav bar */}
-      <div className="border-b border-white/6 px-5 py-3 flex items-center justify-between">
+      <div className="border-b border-white/6 px-5 py-2 flex items-center justify-between">
         <button onClick={() => { setGameState('hub'); forceUpdate(n => n + 1); }}
           className="text-white/30 hover:text-white/60 text-xs font-sans transition-colors">← Hub</button>
         <p className="text-xs text-white/40 font-semibold">{modeLabel}</p>
         {isAdmin && !isRevealed ? (
           <button onClick={() => handleResult(true)}
-            className="text-[9px] font-sans text-sky-300/60 border border-sky-400/30 rounded px-1.5 py-0.5 hover:bg-sky-400/10 transition-colors">
+            className="text-[9px] font-sans text-orange-300/60 border border-orange-400/30 rounded px-1.5 py-0.5 hover:bg-orange-400/10 transition-colors">
             SKIP
           </button>
         ) : <div className="w-10" />}
       </div>
 
-      {/* Streak + Shield bar — compact horizontal, sits close to the question */}
-      <div className="border-b border-white/4 px-5 py-3 flex items-center justify-center gap-6">
-        {/* Streak */}
+      {/* Streak + Shield — compact strip, right under the nav */}
+      <div className="px-5 py-2 flex items-center justify-center gap-5 border-b border-white/4">
         <div className="flex items-center gap-2">
-          <span className="text-4xl font-black tabular-nums leading-none" style={{
-            color: streak === 0 ? 'rgba(255,255,255,0.15)' : streak >= 20 ? '#facc15' : streak >= 10 ? '#f97316' : '#38bdf8'
+          <span className="text-3xl font-black tabular-nums leading-none" style={{
+            color: streak === 0 ? 'rgba(255,255,255,0.15)' : streak >= 20 ? '#facc15' : streak >= 10 ? '#f97316' : '#fb923c'
           }}>{streak}</span>
           <div className="flex flex-col leading-tight">
-            <span className="text-[10px] font-bold text-white/30 uppercase tracking-widest">Streak</span>
-            <span className="text-xs text-white/40">
-              {streak === 0 ? 'get one right' : streak === 1 ? '1 in a row 🔥' : `${streak} in a row 🔥`}
-            </span>
+            <span className="text-[9px] font-bold text-white/25 uppercase tracking-widest">Streak</span>
+            <span className="text-[10px] text-white/35">{streak === 0 ? 'get one right' : `${streak} in a row 🔥`}</span>
           </div>
         </div>
-
-        <div className="w-px h-8 bg-white/10" />
-
-        {/* Shield progress */}
-        <div className="w-48">
+        <div className="w-px h-7 bg-white/10" />
+        <div className="w-44">
           <div className="flex items-center justify-between mb-1">
-            <span className="text-[10px] font-bold text-white/30 uppercase tracking-widest">Shields</span>
+            <span className="text-[9px] font-bold text-white/25 uppercase tracking-widest">Shields</span>
             <div className="flex gap-1">
               {[0, 1].map(i => (
-                <span key={i} className={`text-sm transition-all ${i < shields && shieldFlash && i === shields - 1 ? 'animate-pulse' : ''}`}
-                  style={{ filter: i < shields ? 'none' : 'grayscale(1)', opacity: i < shields ? 1 : 0.2 }}>🛡️</span>
+                <span key={i} className={`text-xs transition-all ${i < shields && shieldFlash && i === shields - 1 ? 'animate-pulse' : ''}`}
+                  style={{ filter: i < shields ? 'none' : 'grayscale(1)', opacity: i < shields ? 1 : 0.15 }}>🛡️</span>
               ))}
             </div>
           </div>
-          <div className="h-1.5 bg-white/8 rounded-full overflow-hidden">
+          <div className="h-1 bg-white/8 rounded-full overflow-hidden">
             <div className="h-full rounded-full transition-all duration-500"
               style={{
                 width: shields >= 2 ? '100%' : `${(shieldProgress / 10) * 100}%`,
-                background: shields >= 2 ? '#38bdf8' : shieldProgress >= 7 ? '#38bdf8' : shieldProgress >= 4 ? '#c084fc' : 'rgba(255,255,255,0.25)'
+                background: shields >= 2 ? '#f97316' : shieldProgress >= 7 ? '#f97316' : shieldProgress >= 4 ? '#fb923c' : 'rgba(255,255,255,0.2)'
               }} />
           </div>
-          <p className="text-[9px] text-white/20 mt-0.5 text-center">
-            {shields >= 2 ? 'shields full' : `${shieldProgress} / 10 → next shield`}
-          </p>
+          <p className="text-[8px] text-white/20 mt-0.5 text-center">{shields >= 2 ? 'full' : `${shieldProgress}/10 → next shield`}</p>
         </div>
       </div>
 
       {shieldFlash && (
-        <div className="text-center py-2 bg-sky-400/10 border-b border-sky-400/20 text-sky-300 text-sm font-black animate-pulse">
+        <div className="text-center py-1.5 bg-orange-400/10 border-b border-orange-400/20 text-orange-300 text-sm font-black animate-pulse">
           🛡️ Shield saved your streak!
         </div>
       )}

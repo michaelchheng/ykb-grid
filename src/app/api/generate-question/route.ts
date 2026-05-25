@@ -190,32 +190,25 @@ function cosineSim(a: number[], b: number[]): number {
 }
 
 function pickSemanticNichePair(leaders: NBALeaderRow[]): [NBALeaderRow, NBALeaderRow] | null {
-  // Work within the obscure zone: ranks 20-90 to avoid obvious stars
-  const pool = leaders.slice(20, Math.min(90, leaders.length));
+  // Niche zone: ranks 15-80 to avoid obvious stars but use real obscure players
+  const pool = leaders.slice(15, Math.min(80, leaders.length));
   if (pool.length < 4) return null;
 
-  // Stat vector = [stat_normalized, gp_normalized, rank_normalized]
-  const maxStat = Math.max(...pool.map(p => p.stat)) || 1;
-  const maxGp   = Math.max(...pool.map(p => p.gp))   || 1;
-  const vecs    = pool.map(p => [
-    p.stat / maxStat,
-    p.gp   / maxGp,
-    (pool.length - pool.indexOf(p)) / pool.length, // inverse rank
-  ]);
-
-  // Random seed player, find most-similar neighbor
-  const seedIdx = Math.floor(Math.random() * pool.length);
-  let bestSim = -1, bestIdx = -1;
-  for (let i = 0; i < pool.length; i++) {
-    if (i === seedIdx) continue;
-    const sim = cosineSim(vecs[seedIdx], vecs[i]);
-    if (sim > bestSim) { bestSim = sim; bestIdx = i; }
+  // Shuffle and find a pair with close stat values (ratio 0.70–0.97) — genuinely hard
+  const shuffled = [...pool].sort(() => Math.random() - 0.5);
+  for (let i = 0; i < shuffled.length; i++) {
+    for (let j = i + 1; j < Math.min(i + 20, shuffled.length); j++) {
+      const a = shuffled[i], b = shuffled[j];
+      if (a.stat === b.stat) continue;
+      const ratio = Math.min(a.stat, b.stat) / Math.max(a.stat, b.stat);
+      if (ratio >= 0.70 && ratio <= 0.97) {
+        return Math.random() > 0.5 ? [a, b] : [b, a];
+      }
+    }
   }
-  if (bestIdx === -1) return null;
-
-  const a = pool[seedIdx], b = pool[bestIdx];
-  if (a.stat === b.stat) return null;
-  return Math.random() > 0.5 ? [a, b] : [b, a];
+  // Fallback: any two non-identical players from the obscure zone
+  const a = shuffled[0], b = shuffled[1];
+  return a && b && a.stat !== b.stat ? [a, b] : null;
 }
 
 // ── Pair picker ────────────────────────────────────────────────────────────────
