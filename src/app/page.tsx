@@ -483,17 +483,18 @@ export default function Home() {
     if (!q) {
       setWaitingForAi(true);
       setGameState('playing');
-      if (aiBuffer.length < 3) fetchAiQuestions(selectedTier);
-      if (aiGauntletBuffer.length < 6) fetchAiGauntlet(selectedTier);
-      if (aiDraftBuffer.length < 3) fetchAiDraft(selectedTier);
+      fetchAiQuestions(selectedTier);
+      fetchAiGauntlet(selectedTier);
+      fetchAiDraft(selectedTier);
       return;
     }
     setCurrentQ(q);
     resetAnswerState(q);
     gauntletQuestionStartMs.current = Date.now();
     setGameState('playing');
-    if (aiBuffer.length < 3) fetchAiQuestions(selectedTier);
-    if (aiGauntletBuffer.length < 6) fetchAiGauntlet(selectedTier);
+    // Always kick off background refill — fetchingAi guard prevents double-fetching
+    if (aiBuffer.length < 6) fetchAiQuestions(selectedTier);
+    if (aiGauntletBuffer.length < 8) fetchAiGauntlet(selectedTier);
     if (aiDraftBuffer.length < 3) fetchAiDraft(selectedTier);
   }
 

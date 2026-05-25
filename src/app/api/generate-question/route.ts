@@ -520,13 +520,20 @@ Return ONLY the raw JSON array — no markdown fences, no explanation.`;
       };
     });
 
-    // ── Eval loop: score each flavor with gpt-4o-mini, regenerate weak ones ───
-    const evaluated = await evalAndRepair(hardened, matchups, apiKey);
-
+    // ── Store immediately so client gets questions fast ────────────────────────
     const existing = qCache.get(cacheKey) ?? [];
-    qCache.set(cacheKey, [...existing, ...evaluated]);
+    qCache.set(cacheKey, [...existing, ...hardened]);
 
-    return Response.json({ questions: evaluated, source: `nba_api+${llmSource}+eval`, matchupsUsed: matchups.length });
+    // ── Eval + repair runs in background — doesn't block the response ─────────
+    evalAndRepair(hardened, matchups, apiKey).then(evaluated => {
+      // Replace the hardened entries in cache with repaired versions
+      const current = qCache.get(cacheKey) ?? [];
+      const hardenedIds = new Set(hardened.map(q => String(q.id)));
+      const without = current.filter(q => !hardenedIds.has(String((q as Record<string,unknown>).id)));
+      qCache.set(cacheKey, [...without, ...evaluated]);
+    }).catch(() => {});
+
+    return Response.json({ questions: hardened, source: `nba_api+${llmSource}`, matchupsUsed: matchups.length });
   } catch (e) {
     console.error('Question generation failed:', e);
     return Response.json({ questions: [], error: String(e) }, { status: 200 });
