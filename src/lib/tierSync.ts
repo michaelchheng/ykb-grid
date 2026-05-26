@@ -83,34 +83,70 @@ export async function pullFromFirestore(uid: string, tier: Tier4) {
   }
 }
 
+// ── Postgres sync (fire-and-forget) ──────────────────────────────────────────
+async function pushToPostgres(uid: string, tier: Tier4, username: string) {
+  try {
+    const { auth } = await import('@/lib/firebase');
+    const idToken = await auth.currentUser?.getIdToken();
+    if (!idToken) return;
+    const d = localGet(tier);
+    fetch('/api/sync-stats', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        idToken,
+        username,
+        tier,
+        bestStreak:    d.bestStreak,
+        todayStreak:   d.todayStreak,
+        totalCorrect:  d.totalCorrect,
+        totalAnswered: d.totalAnswered,
+        lockoutDate:   d.lockout,
+      }),
+    }).catch(() => {});
+  } catch { /* offline/not signed in — ignore */ }
+}
+
 // ── Public write helpers ─────────────────────────────────────────────────────
-export function syncLockout(tier: Tier4, uid?: string | null) {
+export function syncLockout(tier: Tier4, uid?: string | null, username?: string | null) {
   const today = todayStr();
   localSet(tier, { lockout: today });
-  if (uid) pushToFirestore(uid, tier, { lockout: today });
-}
-
-export function syncTodayStreak(streak: number, tier: Tier4, uid?: string | null) {
-  localSet(tier, { todayStreak: streak });
-  if (uid) pushToFirestore(uid, tier, { todayStreak: streak });
-}
-
-export function syncBest(streak: number, tier: Tier4, uid?: string | null) {
-  const current = localGet(tier).bestStreak;
-  if (streak > current) {
-    localSet(tier, { bestStreak: streak });
-    if (uid) pushToFirestore(uid, tier, { bestStreak: streak });
+  if (uid) {
+    pushToFirestore(uid, tier, { lockout: today });
+    pushToPostgres(uid, tier, username || uid.slice(0, 8));
   }
 }
 
-export function syncStat(correct: boolean, tier: Tier4, uid?: string | null) {
+export function syncTodayStreak(streak: number, tier: Tier4, uid?: string | null, username?: string | null) {
+  localSet(tier, { todayStreak: streak });
+  if (uid) {
+    pushToFirestore(uid, tier, { todayStreak: streak });
+    pushToPostgres(uid, tier, username || uid.slice(0, 8));
+  }
+}
+
+export function syncBest(streak: number, tier: Tier4, uid?: string | null, username?: string | null) {
+  const current = localGet(tier).bestStreak;
+  if (streak > current) {
+    localSet(tier, { bestStreak: streak });
+    if (uid) {
+      pushToFirestore(uid, tier, { bestStreak: streak });
+      pushToPostgres(uid, tier, username || uid.slice(0, 8));
+    }
+  }
+}
+
+export function syncStat(correct: boolean, tier: Tier4, uid?: string | null, username?: string | null) {
   const d = localGet(tier);
   const updated = {
     totalCorrect:  d.totalCorrect  + (correct ? 1 : 0),
     totalAnswered: d.totalAnswered + 1,
   };
   localSet(tier, updated);
-  if (uid) pushToFirestore(uid, tier, updated);
+  if (uid) {
+    pushToFirestore(uid, tier, updated);
+    pushToPostgres(uid, tier, username || uid.slice(0, 8));
+  }
 }
 
 export function clearLockout(tier: Tier4, uid?: string | null) {

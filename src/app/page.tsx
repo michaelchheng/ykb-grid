@@ -42,12 +42,12 @@ function isLockedOut(tier: Tier4 = 'easy'): boolean {
   if (typeof window === 'undefined') return false;
   return localGet(tier).lockout === todayStr();
 }
-function setLockout(tier: Tier4, uid?: string | null) { syncLockout(tier, uid); }
+function setLockout(tier: Tier4, uid?: string | null, uname?: string | null) { syncLockout(tier, uid, uname); }
 function getBest(tier: Tier4 = 'easy'): number { return localGet(tier).bestStreak; }
-function saveBest(s: number, tier: Tier4, uid?: string | null) { syncBest(s, tier, uid); }
+function saveBest(s: number, tier: Tier4, uid?: string | null, uname?: string | null) { syncBest(s, tier, uid, uname); }
 function getTodayStreak(tier: Tier4 = 'easy'): number { return localGet(tier).todayStreak; }
-function saveTodayStreak(s: number, tier: Tier4, uid?: string | null) { syncTodayStreak(s, tier, uid); }
-function addStat(correct: boolean, tier: Tier4, uid?: string | null) { syncStat(correct, tier, uid); }
+function saveTodayStreak(s: number, tier: Tier4, uid?: string | null, uname?: string | null) { syncTodayStreak(s, tier, uid, uname); }
+function addStat(correct: boolean, tier: Tier4, uid?: string | null, uname?: string | null) { syncStat(correct, tier, uid, uname); }
 
 // ── Question types ─────────────────────────────────────────────────────────────
 type ComparisonQ = { type: 'comparison'; id: string; data: Question };
@@ -375,7 +375,7 @@ export default function Home() {
   }
 
   function handleResult(correct: boolean) {
-    addStat(correct, selectedTier, uid);
+    addStat(correct, selectedTier, uid, username);
     // Track feedback for all question types
     if (currentQ && currentQ.type !== 'gauntlet') {
       fetch('/api/gauntlet-feedback', {
@@ -394,8 +394,8 @@ export default function Home() {
     if (correct) {
       const newStreak = streak + 1;
       setStreak(newStreak);
-      saveTodayStreak(newStreak, selectedTier, uid);
-      saveBest(newStreak, selectedTier, uid);
+      saveTodayStreak(newStreak, selectedTier, uid, username);
+      saveBest(newStreak, selectedTier, uid, username);
       // Award a shield every 10 correct, max 2 stacked
       if (newStreak % 10 === 0) {
         setShields(prev => {
@@ -414,8 +414,8 @@ export default function Home() {
       setTimeout(() => setShieldFlash(false), 2000);
       setGameState('correct'); // treat as survived — move on
     } else {
-      saveBest(streak, selectedTier, uid);
-      setLockout(selectedTier, uid);
+      saveBest(streak, selectedTier, uid, username);
+      setLockout(selectedTier, uid, username);
       setGameState('wrong');
       // Email notification
       // Fire lockout notification email
