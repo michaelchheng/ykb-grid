@@ -1,0 +1,31 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Run sports video pipeline",
+			"type": "shell",
+			"command": "/Users/michaelchheng/opentrack/whatifs/.venv/bin/python",
+			"args": [
+				"-m",
+				"sports_video_pipeline.main",
+				"run",
+				"--league",
+				"NBA",
+				"--duration",
+				"60"
+			],
+			"isBackground": false
+		},
+		{
+			"label": "sports-video-run",
+			"type": "shell",
+			"command": "/Users/michaelchheng/opentrack/whatifs/.venv/bin/python",
+			"args": [
+				"-m",
+				"sports_video_pipeline.main",
+				"run"
+			],
+			"isBackground": false
+		}
+	]
+}

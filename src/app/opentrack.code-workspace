@@ -1,0 +1,13 @@
+{
+	"folders": [
+		{
+			"path": "../../../opentrack"
+		},
+		{
+			"path": "../.."
+		}
+	],
+	"settings": {
+		"analyticsdx-vscode-core.CLI.checkForPlugin": false
+	}
+}

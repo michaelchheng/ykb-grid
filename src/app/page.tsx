@@ -124,6 +124,10 @@ export default function Home() {
   const [aiDraftBuffer, setAiDraftBuffer]         = useState<DraftChallenge[]>([]);
   const fetchingAiTiers                       = useRef<Set<string>>(new Set());
   const aiBuffersByTier                       = useRef<Map<string, Question[]>>(new Map());
+  const fetchingGauntletTiers                 = useRef<Set<string>>(new Set());
+  const gauntletBuffersByTier                 = useRef<Map<string, GauntletQuestion[]>>(new Map());
+  const fetchingDraftTiers                    = useRef<Set<string>>(new Set());
+  const draftBuffersByTier                    = useRef<Map<string, DraftChallenge[]>>(new Map());
   const [fetchingAi, setFetchingAi]           = useState(false); // kept for loading screen
   const [loadingStep, setLoadingStep]         = useState<string | null>(null);
   const [waitingForAi, setWaitingForAi]       = useState(false);
@@ -145,6 +149,8 @@ export default function Home() {
     } catch { setUsedIds(new Set()); }
     // Swap in the cached buffer for this tier (may be empty if not yet fetched)
     setAiBuffer(aiBuffersByTier.current.get(selectedTier) ?? []);
+    setAiGauntletBuffer(gauntletBuffersByTier.current.get(selectedTier) ?? []);
+    setAiDraftBuffer(draftBuffersByTier.current.get(selectedTier) ?? []);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedTier]);
 
@@ -250,6 +256,8 @@ export default function Home() {
   const gauntletPrewarmed   = useRef(false);
 
   const fetchAiGauntlet = useCallback(async (difficulty: string) => {
+    if (fetchingGauntletTiers.current.has(difficulty)) return;
+    fetchingGauntletTiers.current.add(difficulty);
     try {
       const diff = difficulty === 'easy' ? 'Easy' : difficulty === 'medium' ? 'Medium' : difficulty === 'hard' ? 'Hard' : 'Niche';
       const res = await fetch('/api/generate-gauntlet', {
@@ -261,14 +269,21 @@ export default function Home() {
       const qs = (data.questions ?? []) as GauntletQuestion[];
       if (qs.length > 0) {
         qs.forEach(q => seenGauntletAnswers.current.add(q.answer));
-        setAiGauntletBuffer(prev => [...prev, ...qs]);
+        const prev = gauntletBuffersByTier.current.get(difficulty) ?? [];
+        gauntletBuffersByTier.current.set(difficulty, [...prev, ...qs]);
+        if (difficulty === selectedTier) setAiGauntletBuffer(b => [...b, ...qs]);
       }
-    } catch { /* silent */ }
-  }, []);
+    } catch { /* silent */ } finally {
+      fetchingGauntletTiers.current.delete(difficulty);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedTier]);
 
   const draftPrewarmed = useRef(false);
 
   const fetchAiDraft = useCallback(async (difficulty: string) => {
+    if (fetchingDraftTiers.current.has(difficulty)) return;
+    fetchingDraftTiers.current.add(difficulty);
     try {
       const diff = difficulty === 'easy' ? 'Easy' : difficulty === 'medium' ? 'Medium' : difficulty === 'hard' ? 'Hard' : 'Niche';
       const res = await fetch('/api/generate-draft', {
@@ -278,9 +293,16 @@ export default function Home() {
       });
       const data = await res.json();
       const challenge = data.challenge as DraftChallenge | undefined;
-      if (challenge) setAiDraftBuffer(prev => [...prev, challenge]);
-    } catch { /* silent */ }
-  }, []);
+      if (challenge) {
+        const prev = draftBuffersByTier.current.get(difficulty) ?? [];
+        draftBuffersByTier.current.set(difficulty, [...prev, challenge]);
+        if (difficulty === selectedTier) setAiDraftBuffer(b => [...b, challenge]);
+      }
+    } catch { /* silent */ } finally {
+      fetchingDraftTiers.current.delete(difficulty);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedTier]);
 
   // Pre-warm ALL tiers in parallel on mount so switching is instant
   useEffect(() => {
@@ -288,7 +310,7 @@ export default function Home() {
     gauntletPrewarmed.current = true;
     draftPrewarmed.current = true;
     (['easy','medium','hard','niche'] as const).forEach(t => fetchAiQuestions(t));
-    fetchAiGauntlet(selectedTier);
+    (['easy','medium','hard','niche'] as const).forEach(t => fetchAiGauntlet(t));
     fetchAiDraft(selectedTier);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -591,7 +613,7 @@ export default function Home() {
               { id: 'easy',     label: 'Easy',   color: '#34d399' },
               { id: 'medium',   label: 'Medium', color: '#f97316' },
               { id: 'hard',     label: 'Hard',   color: '#c084fc' },
-              { id: 'niche', label: 'Niche',  color: '#f97316' },
+              { id: 'niche', label: 'Niche',  color: '#facc15' },
             ] as const).map(t => (
               <button key={t.id} onClick={() => setSelectedTier(t.id)}
                 className="rounded-xl border p-3 text-center transition-all"
@@ -640,7 +662,7 @@ export default function Home() {
                   { id: 'easy'     as const, label: 'Easy',   color: '#34d399' },
                   { id: 'medium'   as const, label: 'Medium', color: '#f97316' },
                   { id: 'hard'     as const, label: 'Hard',   color: '#c084fc' },
-                  { id: 'niche' as const, label: 'Niche',  color: '#f97316' },
+                  { id: 'niche' as const, label: 'Niche',  color: '#facc15' },
                 ]).map(t => {
                   const tLocked  = isLockedOut(t.id);
                   const tStreak  = getTodayStreak(t.id);
@@ -835,7 +857,7 @@ export default function Home() {
         <p className="text-2xl font-black text-red-500 mb-5">You do not know ball.</p>
         <p className="text-8xl font-black tabular-nums leading-none mb-1" style={{ color: '#f97316' }}>{streak}</p>
         <p className="text-white/50 text-base font-semibold mb-1">streak ended</p>
-        {getBest() > streak && <p className="text-white/30 text-sm mb-2">best ever: <span className="font-bold text-white/50">{getBest()}</span></p>}
+        {getBest(selectedTier) > streak && <p className="text-white/30 text-sm mb-2">best ever: <span className="font-bold text-white/50">{getBest(selectedTier)}</span></p>}
 
         {currentQ && (
           <div className="mt-6 rounded-2xl border border-white/10 bg-white/[0.03] p-5 text-left mb-6">

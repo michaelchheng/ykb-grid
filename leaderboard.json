@@ -758,5 +758,105 @@
     "avgSpeedMs": 15000,
     "date": "2026-05-15",
     "submittedAt": 1778824456655
+  },
+  {
+    "username": "HoopHead99",
+    "score": 8750,
+    "correct": 9,
+    "total": 10,
+    "bestStreak": 7,
+    "avgSpeedMs": 4200,
+    "date": "2026-05-18",
+    "submittedAt": 1779071299951
+  },
+  {
+    "username": "StatNerd",
+    "score": 7200,
+    "correct": 8,
+    "total": 10,
+    "bestStreak": 5,
+    "avgSpeedMs": 3800,
+    "date": "2026-05-18",
+    "submittedAt": 1779073012978
+  },
+  {
+    "username": "CourtVision",
+    "score": 6500,
+    "correct": 8,
+    "total": 10,
+    "bestStreak": 4,
+    "avgSpeedMs": 6100,
+    "date": "2026-05-18",
+    "submittedAt": 1779072090402
+  },
+  {
+    "username": "BrickLayer",
+    "score": 5800,
+    "correct": 7,
+    "total": 10,
+    "bestStreak": 4,
+    "avgSpeedMs": 5500,
+    "date": "2026-05-18",
+    "submittedAt": 1779072765835
+  },
+  {
+    "username": "WojBomber",
+    "score": 4900,
+    "correct": 7,
+    "total": 10,
+    "bestStreak": 3,
+    "avgSpeedMs": 7200,
+    "date": "2026-05-18",
+    "submittedAt": 1779074101274
+  },
+  {
+    "username": "ClutchGene",
+    "score": 4200,
+    "correct": 6,
+    "total": 10,
+    "bestStreak": 3,
+    "avgSpeedMs": 8900,
+    "date": "2026-05-18",
+    "submittedAt": 1779072901368
+  },
+  {
+    "username": "PickAndRoll",
+    "score": 3600,
+    "correct": 6,
+    "total": 10,
+    "bestStreak": 2,
+    "avgSpeedMs": 9400,
+    "date": "2026-05-18",
+    "submittedAt": 1779072503097
+  },
+  {
+    "username": "IsoKing",
+    "score": 2800,
+    "correct": 5,
+    "total": 10,
+    "bestStreak": 2,
+    "avgSpeedMs": 11000,
+    "date": "2026-05-18",
+    "submittedAt": 1779070619074
+  },
+  {
+    "username": "MidRangeRay",
+    "score": 2100,
+    "correct": 5,
+    "total": 10,
+    "bestStreak": 1,
+    "avgSpeedMs": 13000,
+    "date": "2026-05-18",
+    "submittedAt": 1779070812828
+  },
+  {
+    "username": "GlassEater",
+    "score": 1500,
+    "correct": 4,
+    "total": 10,
+    "bestStreak": 1,
+    "avgSpeedMs": 15000,
+    "date": "2026-05-18",
+    "submittedAt": 1779072883342
   }
 ]

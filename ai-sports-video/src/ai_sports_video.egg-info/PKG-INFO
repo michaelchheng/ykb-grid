@@ -1,0 +1,41 @@
+Metadata-Version: 2.4
+Name: ai-sports-video
+Version: 0.1.0
+Summary: Automated sports short-video pipeline
+Requires-Python: >=3.11
+Description-Content-Type: text/markdown
+Requires-Dist: typer>=0.12.3
+Requires-Dist: rich>=13.7.1
+Requires-Dist: python-dotenv>=1.0.1
+Requires-Dist: pydantic>=2.7.1
+Requires-Dist: pydantic-settings>=2.3.4
+Requires-Dist: requests>=2.32.3
+Provides-Extra: video
+Requires-Dist: moviepy>=1.0.3; extra == "video"
+
+# AI Sports Video Pipeline
+
+Starter workspace for generating short sports videos from topic -> script -> voice -> assets -> assemble -> publish.
+
+## Quick start
+
+1. Create env and install:
+   - `python -m venv .venv`
+   - `source .venv/bin/activate`
+   - `pip install -e .`
+2. Copy env:
+   - `cp .env.example .env`
+3. Run CLI:
+   - `sports-video run --league NBA --duration 60`
+
+## Commands
+
+- `sports-video run` - run full pipeline (stubbed)
+- `sports-video topic` - generate one topic
+- `sports-video script` - generate script from topic
+- `sports-video check` - verify config and paths
+
+## Notes
+
+- This scaffold uses placeholders in modules. Replace stub internals with real API integrations.
+- Media assets in this starter are placeholders and should be replaced with licensed assets before publishing.

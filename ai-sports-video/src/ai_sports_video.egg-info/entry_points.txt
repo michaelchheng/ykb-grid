@@ -1,0 +1,2 @@
+[console_scripts]
+sports-video = sports_video_pipeline.main:app
